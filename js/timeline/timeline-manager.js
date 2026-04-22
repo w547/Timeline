@@ -415,6 +415,39 @@ class TimelineManager {
             notepadBtn.classList.add('active');
         }
         this.ui.notepadBtn = notepadBtn;
+
+        // ✅ 添加结构化提问按钮（在闪记按钮下方）
+        let structuredQuestionsBtn = document.querySelector('.ait-structured-questions-btn');
+        if (!structuredQuestionsBtn) {
+            structuredQuestionsBtn = document.createElement('button');
+            structuredQuestionsBtn.className = 'ait-structured-questions-btn';
+            structuredQuestionsBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
+            structuredQuestionsBtn.setAttribute('aria-label', 'Structured Questions');
+            structuredQuestionsBtn.style.display = 'none';
+            
+            structuredQuestionsBtn.addEventListener('mouseenter', () => {
+                window.globalTooltipManager.show(
+                    'structured-questions-btn',
+                    'button',
+                    structuredQuestionsBtn,
+                    '结构化提问思路提炼',
+                    { placement: 'left' }
+                );
+            });
+            
+            structuredQuestionsBtn.addEventListener('mouseleave', () => {
+                window.globalTooltipManager.hide();
+            });
+
+            structuredQuestionsBtn.addEventListener('click', () => {
+                if (window.structuredQuestionsUI) {
+                    window.structuredQuestionsUI.toggle();
+                }
+            });
+            
+            wrapper.appendChild(structuredQuestionsBtn);
+        }
+        this.ui.structuredQuestionsBtn = structuredQuestionsBtn;
         
         // ✅ 收藏按钮使用相对定位，不需要动态计算位置
         
@@ -3769,6 +3802,17 @@ class TimelineManager {
                 this.ui.notepadBtn.style.display = enabled ? 'flex' : 'none';
             } catch (e) {
                 this.ui.notepadBtn.style.display = 'flex';
+            }
+        }
+
+        // 同步显示结构化提问按钮（受开关控制，默认开启）
+        if (this.ui.structuredQuestionsBtn) {
+            try {
+                const result = await chrome.storage.local.get('aitStructuredQuestionsEnabled');
+                const enabled = result.aitStructuredQuestionsEnabled !== false;
+                this.ui.structuredQuestionsBtn.style.display = enabled ? 'flex' : 'none';
+            } catch (e) {
+                this.ui.structuredQuestionsBtn.style.display = 'flex';
             }
         }
         

@@ -226,7 +226,10 @@
         "js/runner/languages/sql/sandbox.html",
         "js/runner/languages/sql/sandbox-script.js",
         "js/runner/languages/sql/libs/sql-wasm.js",
-        "js/runner/languages/sql/libs/sql-wasm.wasm"
+        "js/runner/languages/sql/libs/sql-wasm.wasm",
+        "js/timeline/structured-questions/index.js",
+        "js/timeline/structured-questions/ui.js",
+        "js/timeline/structured-questions/styles.css"
       ],
       "matches": [
         "<all_urls>"

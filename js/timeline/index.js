@@ -151,6 +151,30 @@ function initializeTimeline() {
     try {
         timelineManagerInstance = new TimelineManager(currentAdapter);
         timelineManagerInstance.init().catch(err => {});
+        
+        // Initialize structured questions functionality
+        if (typeof window.structuredQuestionsExtractor === 'undefined') {
+            // Load structured questions modules
+            const scripts = [
+                'js/timeline/structured-questions/index.js',
+                'js/timeline/structured-questions/ui.js'
+            ];
+            
+            scripts.forEach(script => {
+                const s = document.createElement('script');
+                s.src = chrome.runtime.getURL(script);
+                s.onload = () => {
+                    if (script === 'js/timeline/structured-questions/ui.js') {
+                        // Load styles
+                        const link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = chrome.runtime.getURL('js/timeline/structured-questions/styles.css');
+                        document.head.appendChild(link);
+                    }
+                };
+                document.head.appendChild(s);
+            });
+        }
     } catch (err) {
     }
     
