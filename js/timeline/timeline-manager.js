@@ -806,7 +806,7 @@ class TimelineManager {
     }
     
     /**
-     * ✅ 切换聊天收藏状态
+     * ✅ 切换聊天收藏状态（简化版：直接收藏到默认收藏夹）
      */
     async toggleChatStar() {
         try {
@@ -819,31 +819,12 @@ class TimelineManager {
                 await StarStorageManager.remove(key);
                 return { success: true, action: 'unstar' };
             } else {
-                // 未收藏，显示输入主题弹窗（带文件夹选择器）
-                if (!window.starInputModal) {
-                    console.error('[TimelineManager] starInputModal not available');
-                    return { success: false, action: null };
-                }
-                
+                // ✅ 未收藏：直接添加到默认收藏夹（folderId: null），无需弹窗
                 // 获取默认主题（通过 Adapter 提供）
                 const defaultTheme = this.adapter.getDefaultChatTheme?.() || '';
                 
-                const result = await window.starInputModal.show({
-                    title: chrome.i18n.getMessage('zmvkpx'),
-                    defaultValue: defaultTheme,
-                    placeholder: chrome.i18n.getMessage('zmxvkp'),
-                    folderManager: this.folderManager,
-                    defaultFolderId: null
-                });
-                
-                if (!result) {
-                    // 用户取消了
-                    return { success: false, action: 'cancelled' };
-                }
-                
-                // 添加收藏
                 // ✅ 限制收藏文字长度为前100个字符
-                const truncatedTheme = this.truncateText(result.value, 100);
+                const truncatedTheme = this.truncateText(defaultTheme, 100);
                 const value = {
                     key,
                     url: location.href,
@@ -851,11 +832,18 @@ class TimelineManager {
                     index: -1,
                     question: truncatedTheme,
                     timestamp: Date.now(),
-                    folderId: result.folderId || null
+                    folderId: null  // ✅ 直接收藏到默认收藏夹
                 };
                 await StarStorageManager.add(value);
                 
-                // ✅ 不再需要手动更新收藏列表UI，StarredTab 会自动监听存储变化
+                // 显示收藏成功提示
+                if (window.globalToastManager) {
+                    window.globalToastManager.success(
+                        chrome.i18n.getMessage('vpmzkx') || '已收藏',
+                        this.ui.starredBtn
+                    );
+                }
+                
                 return { success: true, action: 'star' };
             }
         } catch (e) {
@@ -3612,29 +3600,14 @@ class TimelineManager {
             this.updateStarredBtnVisibility();
             return { success: true, action: 'unstar' };
         } else {
-            // 添加收藏 - 显示弹窗输入主题和选择文件夹
-            if (!window.starInputModal) {
-                console.error('[TimelineManager] starInputModal not available');
-                return { success: false, action: null };
-            }
-            
-            const result = await window.starInputModal.show({
-                title: chrome.i18n.getMessage('zmvkpx'),
-                defaultValue: m.summary,
-                placeholder: chrome.i18n.getMessage('zmxvkp'),
-                folderManager: this.folderManager,
-                defaultFolderId: null
-            });
-            
-            if (!result) {
-                // 用户取消了
-                return { success: false, action: 'cancelled' };
-            }
+            // ✅ 添加收藏：直接保存到默认收藏夹（folderId: null），无需弹窗
+            // 使用 m.summary 作为收藏标题
+            const summary = m.summary || '';
             
             this.starred.add(id);
             this.starredIndexes.add(storageKey);
-            // ✅ 使用 nodeId 或数组索引保存
-            this.saveStarItemWithFolder(storageKey, result.value, result.folderId);
+            // ✅ 使用 nodeId 或数组索引保存，folderId 为 null（默认收藏夹）
+            this.saveStarItemWithFolder(storageKey, summary, null);
             
             m.starred = true;
             
