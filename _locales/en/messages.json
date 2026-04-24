@@ -833,5 +833,21 @@
   "mirrorSiteDomainExists": { "message": "Domain already exists" },
   "mirrorSiteDomainInvalid": { "message": "Invalid domain format" },
   "mirrorSiteDomainIsOfficial": { "message": "This domain is already an officially supported platform" },
-  "mirrorSiteCopied": { "message": "Copied to clipboard" }
+  "mirrorSiteCopied": { "message": "Copied to clipboard" },
+  "tlnqmb": { "message": "Extract Template" },
+  "tlnqmbconfirm": { "message": "Extract Template" },
+  "tlnqmbconfirmmsg": { "message": "Analyze questions in this folder and extract reusable prompt templates, saved to the prompt list." },
+  "nkzmvx": { "message": "No questions to extract" },
+  "processing": { "message": "Processing..." },
+  "tlmfailed": { "message": "Template extraction failed" },
+  "tlsuccess": { "message": "Extracted and saved prompts" },
+  "multiSelect": { "message": "Multi-select" },
+  "selectAll": { "message": "Select All" },
+  "deselectAll": { "message": "Deselect All" },
+  "moveSelected": { "message": "Move Selected" },
+  "selectedCount": { "message": "$count selected" },
+  "noItemSelected": { "message": "Please select items to move first" },
+  "batchMoveSuccess": { "message": "Moved $count items to target folder" },
+  "batchMovePartial": { "message": "Some items failed to move ($count)" },
+  "batchMoveFailed": { "message": "Batch move failed" }
 }

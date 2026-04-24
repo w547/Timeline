@@ -144,6 +144,53 @@ class FolderManager {
     }
     
     /**
+     * [新功能] 2024-xx 批量移动收藏项到文件夹
+     * 
+     * 【功能说明】
+     * 支持一次选择多个收藏项，批量移动到指定文件夹
+     * 
+     * 【用户需求】
+     * - 用户可以勾选多个收藏项
+     * - 点击"移动选中项"按钮
+     * - 选择目标文件夹
+     * - 批量移动选中的收藏项
+     * 
+     * 【实现逻辑】
+     * 1. 遍历所有要移动的 turnId
+     * 2. 对每个 turnId 调用 moveStarredToFolder
+     * 3. 记录成功/失败数量
+     * 4. 返回移动结果统计
+     * 
+     * @param {string[]} turnIds - 收藏项 ID 数组
+     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 未分类）
+     * @returns {Promise<{success: number, failed: number, errors: string[]}>}
+     */
+    async moveStarredItemsToFolder(turnIds, targetFolderId) {
+        const results = { success: 0, failed: 0, errors: [] };
+        
+        for (const turnId of turnIds) {
+            try {
+                // 跳过已经在目标文件夹的项
+                const key = `chatTimelineStar:${turnId}`;
+                const item = await StarStorageManager.findByKey(key);
+                if (item && item.folderId === targetFolderId) {
+                    continue; // 已在目标文件夹，跳过
+                }
+                
+                await this.moveStarredToFolder(turnId, targetFolderId);
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`${turnId}: ${error.message}`);
+                console.error(`[FolderManager] 移动收藏项失败: ${turnId}`, error);
+            }
+        }
+        
+        console.log(`[FolderManager] 批量移动完成: 成功 ${results.success}, 失败 ${results.failed}`);
+        return results;
+    }
+    
+    /**
      * 按文件夹分组收藏项（树状结构）
      * @returns {Promise<Object>} 分组后的数据
      */

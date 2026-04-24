@@ -65,6 +65,11 @@ class StarredTreeRenderer {
         this._currentDropItemTarget = null;
         this._dropItemPosition = null;
 
+        // [新功能] 2024-xx 多选功能状态管理
+        // 用于批量移动收藏项
+        this._selectedItems = new Set();  // 存储被选中的 turnId
+        this._isMultiSelectMode = false;  // 是否处于多选模式
+
         const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform) ||
             (navigator.userAgentData && navigator.userAgentData.platform === 'macOS');
         const gTop = isMac ? '#6CC4F8' : '#FFD666';
@@ -101,6 +106,9 @@ class StarredTreeRenderer {
         }
         list.style.display = '';
 
+        // [新功能] 2024-xx 多选功能：渲染批量操作工具栏
+        this._renderBatchToolbar(list);
+
         for (const folder of tree.folders) {
             this.renderFolder(folder, list);
         }
@@ -118,6 +126,101 @@ class StarredTreeRenderer {
                     </div>
                 </div>`;
         }
+    }
+
+    /**
+     * [新功能] 2024-xx 渲染批量操作工具栏
+     * 
+     * 【功能说明】
+     * 在收藏列表顶部显示多选模式切换按钮和批量操作按钮
+     * 
+     * 【用户交互】
+     * 1. 点击"多选"按钮进入多选模式
+     * 2. 在多选模式下，显示复选框和批量操作工具栏
+     * 3. 批量操作工具栏包含：全选、取消全选、移动选中项按钮
+     * 4. 点击空白处或"取消"可退出多选模式
+     */
+    _renderBatchToolbar(container) {
+        // 创建工具栏容器
+        const toolbar = document.createElement('div');
+        toolbar.className = 'ait-batch-toolbar';
+
+        // 多选模式切换按钮
+        const multiSelectBtn = document.createElement('button');
+        multiSelectBtn.className = 'ait-batch-toolbar-btn';
+        multiSelectBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span>${chrome.i18n.getMessage('multiSelect') || '多选'}</span>
+        `;
+        multiSelectBtn.addEventListener('click', () => this._toggleMultiSelectMode());
+        toolbar.appendChild(multiSelectBtn);
+
+        // 批量操作区域（多选模式下显示）
+        const batchActions = document.createElement('div');
+        batchActions.className = 'ait-batch-actions';
+        batchActions.style.display = 'none';
+
+        // 已选数量显示
+        const selectedCount = document.createElement('span');
+        selectedCount.className = 'ait-batch-selected-count';
+        selectedCount.textContent = chrome.i18n.getMessage('selectedCount') || '已选 0 项';
+        batchActions.appendChild(selectedCount);
+
+        // 全选按钮
+        const selectAllBtn = document.createElement('button');
+        selectAllBtn.className = 'ait-batch-action-btn';
+        selectAllBtn.innerHTML = chrome.i18n.getMessage('selectAll') || '全选';
+        selectAllBtn.addEventListener('click', () => this._selectAllItems());
+        batchActions.appendChild(selectAllBtn);
+
+        // 取消全选按钮
+        const deselectAllBtn = document.createElement('button');
+        deselectAllBtn.className = 'ait-batch-action-btn';
+        deselectAllBtn.innerHTML = chrome.i18n.getMessage('deselectAll') || '取消全选';
+        deselectAllBtn.addEventListener('click', () => this._deselectAllItems());
+        batchActions.appendChild(deselectAllBtn);
+
+        // 移动选中项按钮
+        const moveBtn = document.createElement('button');
+        moveBtn.className = 'ait-batch-action-btn primary';
+        moveBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+                <polyline points="17 1 21 5 17 9"></polyline>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                <polyline points="7 23 3 19 7 15"></polyline>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+            <span>${chrome.i18n.getMessage('moveSelected') || '移动选中项'}</span>
+        `;
+        moveBtn.addEventListener('click', () => this._handleBatchMove());
+        batchActions.appendChild(moveBtn);
+
+        // 取消按钮
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'ait-batch-action-btn';
+        cancelBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            <span>${chrome.i18n.getMessage('cancel') || '取消'}</span>
+        `;
+        cancelBtn.addEventListener('click', () => this._toggleMultiSelectMode(false));
+        batchActions.appendChild(cancelBtn);
+
+        toolbar.appendChild(batchActions);
+
+        // 保存引用以便后续更新
+        this._batchToolbar = toolbar;
+        this._batchActions = batchActions;
+        this._selectedCountEl = selectedCount;
+
+        container.appendChild(toolbar);
     }
 
     renderFolder(folder, container, level = 0) {
@@ -259,6 +362,15 @@ class StarredTreeRenderer {
             el.classList.add('active');
         }
 
+        // [新功能] 2024-xx 多选功能：添加复选框
+        // 多选模式下显示复选框，非多选模式隐藏
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'ait-multi-select-checkbox';
+        checkbox.dataset.turnId = item.turnId;
+        // 非多选模式时复选框不显示，但保持可点击（用于切换多选模式）
+        el.appendChild(checkbox);
+
         if (this.opts.showPlatformIcon) {
             const siteInfo = getSiteInfoByUrl(item.url);
             const logo = document.createElement('div');
@@ -298,6 +410,12 @@ class StarredTreeRenderer {
         actionsWrap.appendChild(moreBtn);
         el.appendChild(actionsWrap);
 
+        // [新功能] 2024-xx 多选功能：更新选中状态
+        if (this._selectedItems.has(item.turnId)) {
+            el.classList.add('selected');
+            checkbox.checked = true;
+        }
+
         return el;
     }
 
@@ -310,6 +428,24 @@ class StarredTreeRenderer {
         const DBLCLICK_DELAY = 250;
 
         const onClick = (e) => {
+            // [新功能] 2024-xx 多选功能：处理复选框点击
+            const checkbox = e.target.closest('.ait-multi-select-checkbox');
+            if (checkbox) {
+                e.stopPropagation();
+                const itemEl = checkbox.closest('.timeline-starred-item');
+                if (itemEl) {
+                    // 如果没有开启多选模式，先开启
+                    if (!this._isMultiSelectMode) {
+                        this._toggleMultiSelectMode(true);
+                    }
+                    const turnId = itemEl.dataset.turnId;
+                    if (turnId) {
+                        this._toggleItemSelection(turnId);
+                    }
+                }
+                return;
+            }
+
             const toggle = e.target.closest('.ait-folder-toggle');
             if (toggle) {
                 const folderEl = toggle.closest('.ait-folder-item');
@@ -339,13 +475,23 @@ class StarredTreeRenderer {
                 return;
             }
 
+            // [新功能] 2024-xx 多选功能：点击收藏项名称时，如果是多选模式则切换选中状态
             if (e.target.closest('.timeline-starred-item-name')) {
                 const itemEl = e.target.closest('.timeline-starred-item');
                 if (itemEl) {
                     const item = this._itemDataMap.get(itemEl.dataset.turnId);
                     if (item) {
-                        if (_clickTimer) { clearTimeout(_clickTimer); _clickTimer = null; }
-                        _clickTimer = setTimeout(() => { _clickTimer = null; this._navigateToItem(item); }, DBLCLICK_DELAY);
+                        if (this._isMultiSelectMode) {
+                            // 多选模式下，点击名称切换选中状态
+                            const turnId = itemEl.dataset.turnId;
+                            if (turnId) {
+                                this._toggleItemSelection(turnId);
+                            }
+                        } else {
+                            // 非多选模式下，执行原有导航逻辑
+                            if (_clickTimer) { clearTimeout(_clickTimer); _clickTimer = null; }
+                            _clickTimer = setTimeout(() => { _clickTimer = null; this._navigateToItem(item); }, DBLCLICK_DELAY);
+                        }
                     }
                 }
                 return;
@@ -1091,6 +1237,249 @@ class StarredTreeRenderer {
         return current === item.urlWithoutProtocol;
     }
 
+    // ==================== [新功能] 2024-xx 多选功能 ====================
+
+    /**
+     * 切换多选模式
+     * @param {boolean} [enable] - 指定开启或关闭，不指定则切换
+     */
+    _toggleMultiSelectMode(enable) {
+        const shouldEnable = enable !== undefined ? enable : !this._isMultiSelectMode;
+
+        this._isMultiSelectMode = shouldEnable;
+
+        if (!shouldEnable) {
+            // 退出多选模式，清除所有选中项
+            this._selectedItems.clear();
+        }
+
+        // 更新工具栏状态
+        this._updateBatchToolbarState();
+
+        // 更新列表中所有复选框的显示状态
+        const list = this.opts.getListContainer();
+        if (list) {
+            list.querySelectorAll('.timeline-starred-item').forEach(el => {
+                el.classList.toggle('multi-select-mode', shouldEnable);
+            });
+        }
+
+        console.log(`[StarredTreeRenderer] 多选模式: ${shouldEnable ? '开启' : '关闭'}, 已选 ${this._selectedItems.size} 项`);
+    }
+
+    /**
+     * 更新批量操作工具栏状态
+     */
+    _updateBatchToolbarState() {
+        if (!this._batchToolbar) return;
+
+        const toolbar = this._batchToolbar;
+        const batchActions = this._batchActions;
+
+        // 切换工具栏按钮的显示
+        const multiSelectBtn = toolbar.querySelector('.ait-batch-toolbar-btn');
+        if (multiSelectBtn) {
+            multiSelectBtn.style.display = this._isMultiSelectMode ? 'none' : 'flex';
+        }
+
+        // 显示/隐藏批量操作区域
+        if (batchActions) {
+            batchActions.style.display = this._isMultiSelectMode ? 'flex' : 'none';
+        }
+
+        // 更新已选数量
+        this._updateSelectedCount();
+    }
+
+    /**
+     * 更新已选数量显示
+     */
+    _updateSelectedCount() {
+        if (!this._selectedCountEl) return;
+
+        const count = this._selectedItems.size;
+        const msg = chrome.i18n.getMessage('selectedCount') || '已选 $count 项';
+        this._selectedCountEl.textContent = msg.replace('$count', count);
+    }
+
+    /**
+     * 全选所有收藏项
+     */
+    _selectAllItems() {
+        const list = this.opts.getListContainer();
+        if (!list) return;
+
+        list.querySelectorAll('.timeline-starred-item').forEach(el => {
+            const turnId = el.dataset.turnId;
+            if (turnId) {
+                this._selectedItems.add(turnId);
+                el.classList.add('selected');
+                const checkbox = el.querySelector('.ait-multi-select-checkbox');
+                if (checkbox) checkbox.checked = true;
+            }
+        });
+
+        this._updateSelectedCount();
+    }
+
+    /**
+     * 取消全选
+     */
+    _deselectAllItems() {
+        this._selectedItems.clear();
+
+        const list = this.opts.getListContainer();
+        if (list) {
+            list.querySelectorAll('.timeline-starred-item').forEach(el => {
+                el.classList.remove('selected');
+                const checkbox = el.querySelector('.ait-multi-select-checkbox');
+                if (checkbox) checkbox.checked = false;
+            });
+        }
+
+        this._updateSelectedCount();
+    }
+
+    /**
+     * 切换单个收藏项的选中状态
+     * @param {string} turnId - 收藏项 ID
+     */
+    _toggleItemSelection(turnId) {
+        if (this._selectedItems.has(turnId)) {
+            this._selectedItems.delete(turnId);
+        } else {
+            this._selectedItems.add(turnId);
+        }
+
+        // 更新列表项的样式
+        const list = this.opts.getListContainer();
+        if (list) {
+            const itemEl = list.querySelector(`.timeline-starred-item[data-turn-id="${turnId}"]`);
+            if (itemEl) {
+                itemEl.classList.toggle('selected', this._selectedItems.has(turnId));
+                const checkbox = itemEl.querySelector('.ait-multi-select-checkbox');
+                if (checkbox) checkbox.checked = this._selectedItems.has(turnId);
+            }
+        }
+
+        this._updateSelectedCount();
+    }
+
+    /**
+     * 处理批量移动选中项
+     * 
+     * 【用户交互流程】
+     * 1. 用户点击"移动选中项"按钮
+     * 2. 显示文件夹选择菜单
+     * 3. 用户选择目标文件夹
+     * 4. 执行批量移动操作
+     * 5. 显示结果提示
+     */
+    async _handleBatchMove() {
+        const selectedTurnIds = Array.from(this._selectedItems);
+
+        if (selectedTurnIds.length === 0) {
+            this._toast('warning', 'noItemSelected', '请先选择要移动的收藏项');
+            return;
+        }
+
+        // 获取所有文件夹用于显示选择菜单
+        const folders = await this.folderManager.getFolders();
+
+        // 构建文件夹选择菜单项
+        const items = [
+            {
+                label: chrome.i18n.getMessage('defaultFolder') || '未分类',
+                icon: '📁',
+                onClick: () => this._executeBatchMove(selectedTurnIds, null)
+            }
+        ];
+
+        // 添加子文件夹选项
+        for (const folder of folders) {
+            items.push({
+                label: folder.name,
+                icon: folder.icon || '📂',
+                onClick: () => this._executeBatchMove(selectedTurnIds, folder.id)
+            });
+        }
+
+        // 添加取消选项
+        items.push({ type: 'divider' });
+        items.push({
+            label: chrome.i18n.getMessage('cancel') || '取消',
+            onClick: () => { }
+        });
+
+        // 显示文件夹选择菜单
+        const toolbar = this._batchToolbar;
+        if (toolbar) {
+            window.globalDropdownManager.show({
+                trigger: toolbar.querySelector('.ait-batch-action-btn.primary'),
+                items: items,
+                position: 'top',
+                width: 180
+            });
+        }
+    }
+
+    /**
+     * 执行批量移动操作
+     * @param {string[]} turnIds - 要移动的收藏项 ID 数组
+     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 未分类）
+     */
+    async _executeBatchMove(turnIds, targetFolderId) {
+        if (turnIds.length === 0) return;
+
+        try {
+            // 调用 folderManager 的批量移动方法
+            const result = await this.folderManager.moveStarredItemsToFolder(turnIds, targetFolderId);
+
+            // 显示结果提示
+            if (result.success > 0) {
+                const folderName = targetFolderId === null
+                    ? (chrome.i18n.getMessage('defaultFolder') || '未分类')
+                    : this._getFolderNameById(targetFolderId);
+
+                // [新功能] 2024-xx 多选移动：使用国际化消息，替换占位符
+                const msgTemplate = chrome.i18n.getMessage('batchMoveSuccess') || '已移动 $count 项到目标文件夹';
+                const message = msgTemplate.replace('$count', result.success) + `「${folderName}」`;
+                this._toast('success', '', message);
+            }
+
+            if (result.failed > 0) {
+                console.error(`[StarredTreeRenderer] 批量移动失败 ${result.failed} 项:`, result.errors);
+                // [新功能] 2024-xx 多选移动：使用国际化消息，替换占位符
+                const msgTemplate = chrome.i18n.getMessage('batchMovePartial') || '部分移动失败（$count 项）';
+                const message = msgTemplate.replace('$count', result.failed);
+                this._toast('warning', '', message);
+            }
+
+            // 退出多选模式并刷新
+            this._toggleMultiSelectMode(false);
+            await this.opts.onAfterAction();
+
+        } catch (error) {
+            console.error('[StarredTreeRenderer] 批量移动失败:', error);
+            this._toast('error', 'batchMoveFailed', '批量移动失败');
+        }
+    }
+
+    /**
+     * 根据文件夹 ID 获取文件夹名称
+     * @param {string} folderId - 文件夹 ID
+     * @returns {string}
+     */
+    _getFolderNameById(folderId) {
+        // 从已缓存的文件夹数据中查找
+        for (const [id, data] of this._folderDataMap) {
+            if (id === folderId) {
+                return data.folder.name;
+            }
+        }
+        return folderId;
+    }
+
     // ==================== 生命周期 ====================
 
     destroy() {
@@ -1099,6 +1488,9 @@ class StarredTreeRenderer {
         this._delegateContainer = null;
         this._folderDataMap.clear();
         this._itemDataMap.clear();
+        // [新功能] 2024-xx 多选功能：清理多选状态
+        this._selectedItems.clear();
+        this._isMultiSelectMode = false;
     }
 
     // ==================== URL 变化 → active 状态 ====================

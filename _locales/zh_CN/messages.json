@@ -833,5 +833,21 @@
   "mirrorSiteDomainExists": { "message": "域名已存在" },
   "mirrorSiteDomainInvalid": { "message": "域名格式无效" },
   "mirrorSiteDomainIsOfficial": { "message": "该域名已是官方适配平台，无需添加" },
-  "mirrorSiteCopied": { "message": "已复制到剪贴板" }
+  "mirrorSiteCopied": { "message": "已复制到剪贴板" },
+  "tlnqmb": { "message": "提炼模板" },
+  "tlnqmbconfirm": { "message": "提炼模板" },
+  "tlnqmbconfirmmsg": { "message": "将分析文件夹中的问题，提炼出可复用的提问模板，保存到提示词列表。" },
+  "nkzmvx": { "message": "没有可提炼的问题" },
+  "processing": { "message": "正在处理..." },
+  "tlmfailed": { "message": "模板提炼失败" },
+  "tlsuccess": { "message": "已提炼并保存提示词" },
+  "multiSelect": { "message": "多选" },
+  "selectAll": { "message": "全选" },
+  "deselectAll": { "message": "取消全选" },
+  "moveSelected": { "message": "移动选中项" },
+  "selectedCount": { "message": "已选 $count 项" },
+  "noItemSelected": { "message": "请先选择要移动的收藏项" },
+  "batchMoveSuccess": { "message": "已移动 $count 项到目标文件夹" },
+  "batchMovePartial": { "message": "部分移动失败（$count 项）" },
+  "batchMoveFailed": { "message": "批量移动失败" }
 }
