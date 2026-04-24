@@ -60,6 +60,7 @@
         "js/sidebarStarred/starred-tree-renderer.js",
         "js/panelModal/tabs/starred/index.js",
         "js/panelModal/tabs/timeline/index.js",
+        "js/prompt-template-extractor.js",
         "js/panelModal/tabs/prompt/index.js",
         "js/panelModal/tabs/smartInputBox/index.js",
         "js/panelModal/tabs/formula/index.js",

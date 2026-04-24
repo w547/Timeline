@@ -931,14 +931,43 @@ class TimelineManager {
         this.injectToggleButton();
 
         /**
-         * ✅ 按照元素在页面上的实际位置（从上往下）排序
-         * 确保节点顺序和视觉顺序完全一致，适用于所有网站
-         * 
-         * ✅ 性能优化：批量读取所有 rect 后再排序
-         * 原因：getBoundingClientRect() 会触发浏览器重排
-         * 批量读取可以让浏览器合并重排操作，减少布局抖动
+         * ✅ 过滤掉不可见或不在对话容器中的元素
+         * 原因：某些选择器可能匹配到隐藏的、重复的或不在对话容器中的元素
+         * 例如：预览面板、历史记录、缓存元素等
          */
-        const elementsArray = Array.from(userTurnElements);
+        const isValidMessageElement = (el) => {
+            if (!el) return false;
+            // 检查元素是否在当前对话容器内
+            if (!this.conversationContainer?.contains(el)) return false;
+            // 检查元素是否可见
+            if (!el.offsetParent && el.offsetWidth === 0 && el.offsetHeight === 0) return false;
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) {
+                return false;
+            }
+            return true;
+        };
+        // ✅ 按照元素在页面上的实际位置（从上往下）排序
+        // 确保节点顺序和视觉顺序完全一致，适用于所有网站
+        // ✅ 性能优化：批量读取所有 rect 后再排序
+        // 原因：getBoundingClientRect() 会触发浏览器重排
+        // 批量读取可以让浏览器合并重排操作，减少布局抖动
+        let elementsArray = Array.from(userTurnElements).filter(isValidMessageElement);
+        
+        /**
+         * ✅ 基于内容的去重：移除具有相同内容的连续重复元素
+         * 原因：某些页面可能有隐藏的或重复的对话元素，导致 markers 数量异常
+         * 例如：预览面板、历史记录、DOM 缓存等
+         */
+        elementsArray = elementsArray.filter((el, idx, arr) => {
+            // 检查是否是连续重复（当前元素与前一个元素内容相同）
+            if (idx === 0) return true;
+            const prevText = (arr[idx - 1].textContent || '').trim().substring(0, 100);
+            const currText = (el.textContent || '').trim().substring(0, 100);
+            // 如果当前元素与前一个元素内容完全相同，则移除
+            return prevText !== currText;
+        });
+        
         // 一次性批量读取所有 rect（利用浏览器批量优化）
         const rectsMap = new Map();
         elementsArray.forEach(el => rectsMap.set(el, el.getBoundingClientRect()));
