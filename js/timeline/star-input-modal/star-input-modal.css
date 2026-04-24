@@ -100,6 +100,19 @@ html[data-timeline-theme="dark"] .star-input-modal-header h3 {
     gap: 8px;
 }
 
+/* 多行文本输入行（标签在上方） */
+.star-input-modal-row-textarea {
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* 多行文本输入框样式 */
+.star-input-modal-row-textarea .star-input-modal-input {
+    width: 100%;
+    min-height: 150px;
+    height: auto;
+}
+
 /* 左侧标签 */
 .star-input-modal-label {
     flex-shrink: 0;
@@ -112,6 +125,12 @@ html[data-timeline-theme="dark"] .star-input-modal-header h3 {
     color: #374151;
     padding-top: 10px;
     white-space: nowrap;
+}
+
+.star-input-modal-row-textarea .star-input-modal-label {
+    width: auto;
+    padding-top: 0;
+    justify-content: flex-start;
 }
 
 .star-input-modal-required {
@@ -181,11 +200,11 @@ html[data-timeline-theme="dark"] .star-input-modal-folder-text.placeholder {
     opacity: 0.5;
 }
 
-/* 输入框 */
+/* 输入框（多行文本框） */
 .star-input-modal-input {
     flex: 1;
-    height: 40px;
-    padding: 0 14px;
+    min-height: 100px;
+    padding: 12px 14px;
     font-size: 14px;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -195,7 +214,9 @@ html[data-timeline-theme="dark"] .star-input-modal-folder-text.placeholder {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #1f2937;
     background: #ffffff;
-    line-height: 40px;
+    line-height: 1.5;
+    resize: vertical;
+    overflow-y: auto;
 }
 
 html[data-timeline-theme="dark"] .star-input-modal-input {

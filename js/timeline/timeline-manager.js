@@ -823,14 +823,13 @@ class TimelineManager {
                 // 获取默认主题（通过 Adapter 提供）
                 const defaultTheme = this.adapter.getDefaultChatTheme?.() || '';
                 
-                // ✅ 限制收藏文字长度为前100个字符
-                const truncatedTheme = this.truncateText(defaultTheme, 100);
+                // ✅ 保存完整收藏文字（不在存储时截断）
                 const value = {
                     key,
                     url: location.href,
                     urlWithoutProtocol: urlWithoutProtocol,
                     index: -1,
-                    question: truncatedTheme,
+                    question: defaultTheme,
                     timestamp: Date.now(),
                     folderId: null  // ✅ 直接收藏到默认收藏夹
                 };
@@ -3348,6 +3347,10 @@ class TimelineManager {
             // 使用 StarStorageManager 获取当前 URL 的收藏
             const items = await StarStorageManager.getByUrl(url);
             
+            // ✅ 诊断日志：记录收藏加载情况
+            const totalStars = (await StarStorageManager.getAll()).length;
+            console.log(`[TimelineManager] 📌 收藏加载: 当前页面 ${items.length} 个, 总计 ${totalStars} 个 (URL: ${url})`);
+            
             // ✅ 提取 nodeId/index（支持字符串和数字）
             items.forEach(item => {
                 // 优先使用 nodeId，其次 index
@@ -3356,8 +3359,19 @@ class TimelineManager {
                     this.starredIndexes.add(nodeKey);
                 }
             });
+            
+            // ✅ 如果有收藏但无法匹配到当前页面的节点，给出警告
+            if (totalStars > 0 && items.length === 0) {
+                console.warn('[TimelineManager] ⚠️ 检测到有收藏记录但当前页面未匹配，可能是 URL 格式变化或数据存储问题');
+                // 尝试调试：列出部分存储的 URL
+                const allItems = await StarStorageManager.getAll();
+                if (allItems.length > 0) {
+                    const sampleUrls = allItems.slice(0, 3).map(i => i.urlWithoutProtocol);
+                    console.log('[TimelineManager] 存储中的部分 URL 示例:', sampleUrls);
+                }
+            }
         } catch (e) {
-            // Silently fail
+            console.error('[TimelineManager] ❌ 加载收藏失败:', e);
         }
     }
     
@@ -3468,14 +3482,13 @@ class TimelineManager {
         try {
             const urlWithoutProtocol = location.href.replace(/^https?:\/\//, '');
             const key = `chatTimelineStar:${urlWithoutProtocol}:${index}`;
-            // ✅ 限制收藏文字长度为前100个字符
-            const truncatedQuestion = this.truncateText(question, 100);
+            // ✅ 保存完整收藏文字
             const value = { 
                 key,
                 url: location.href,
                 urlWithoutProtocol: urlWithoutProtocol,
                 index: index,
-                question: truncatedQuestion,
+                question: question,
                 timestamp: Date.now()
             };
             await StarStorageManager.add(value);
@@ -3494,8 +3507,7 @@ class TimelineManager {
         try {
             const urlWithoutProtocol = location.href.replace(/^https?:\/\//, '');
             const key = `chatTimelineStar:${urlWithoutProtocol}:${nodeKey}`;
-            // ✅ 限制收藏文字长度为前100个字符
-            const truncatedQuestion = this.truncateText(question, 100);
+            // ✅ 保存完整收藏文字
             const value = { 
                 key,
                 url: location.href,
@@ -3504,13 +3516,18 @@ class TimelineManager {
                 // 字符串：使用 nodeId 字段（Gemini 等）
                 // 数字：使用 index 字段（其他网站，兼容旧数据）
                 ...(typeof nodeKey === 'string' ? { nodeId: nodeKey } : { index: nodeKey }),
-                question: truncatedQuestion,
+                question: question,
                 timestamp: Date.now(),
                 folderId: folderId || null
             };
-            await StarStorageManager.add(value);
+            const success = await StarStorageManager.add(value);
+            if (success) {
+                console.log(`[TimelineManager] ✅ 收藏已保存: ${question.substring(0, 30)}... (key: ${key})`);
+            } else {
+                console.error('[TimelineManager] ❌ 收藏保存失败!');
+            }
         } catch (e) {
-            // Silently fail
+            console.error('[TimelineManager] ❌ 保存收藏项异常:', e);
         }
     }
     
@@ -3962,8 +3979,8 @@ class TimelineManager {
                 this.pinnedIndexes.delete(nodeKey);
             } else {
                 // 添加标记
-                // ✅ 限制标记文字长度为前100个字符
-                const truncatedSummary = this.truncateText(marker.summary || '', 100);
+                // ✅ 保存完整标记文字
+                const truncatedSummary = marker.summary || '';
                 const pinData = {
                     key,
                     url: location.href,

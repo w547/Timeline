@@ -812,7 +812,7 @@ class StarredTreeRenderer {
                 const itemEl = nameEl.closest('.timeline-starred-item');
                 if (itemEl) {
                     const item = this._itemDataMap.get(itemEl.dataset.turnId);
-                    if (item) this.handleEditStarred(item.turnId, item.theme, item.folderId);
+                    if (item) this.handleEditStarred(item.turnId, item.fullContent, item.folderId);
                 }
                 return;
             }
@@ -928,12 +928,12 @@ class StarredTreeRenderer {
             {
                 label: chrome.i18n.getMessage('vkpxzm') || 'Edit',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
-                onClick: () => this.handleEditStarred(item.turnId, item.theme, item.folderId)
+                onClick: () => this.handleEditStarred(item.turnId, item.fullContent, item.folderId)
             },
             {
                 label: chrome.i18n.getMessage('vxkpmz') || 'Move to',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
-                onClick: () => this.handleEditStarred(item.turnId, item.theme, item.folderId)
+                onClick: () => this.handleEditStarred(item.turnId, item.fullContent, item.folderId)
             },
             {
                 label: chrome.i18n.getMessage('mvkxpz') || 'Copy',

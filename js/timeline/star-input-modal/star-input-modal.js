@@ -155,18 +155,17 @@ class StarInputModal {
                     <h3>${escapeHTML(config.title)}</h3>
                 </div>
                 <div class="star-input-modal-body">
-                    <div class="star-input-modal-row">
+                    <div class="star-input-modal-row star-input-modal-row-textarea">
                         <label class="star-input-modal-label">
                             ${chrome.i18n.getMessage('pkmvxz')}<span class="star-input-modal-required">*</span>
                         </label>
-                        <input 
-                            type="text"
+                        <textarea 
                             class="star-input-modal-input" 
                             placeholder="${escapeHTML(config.placeholder)}" 
                             maxlength="${config.maxLength}"
                             autocomplete="off"
-                            value="${escapeHTML(config.defaultValue)}"
-                        />
+                            rows="4"
+                        >${escapeHTML(config.defaultValue)}</textarea>
                     </div>
                     <div class="star-input-modal-row">
                         <label class="star-input-modal-label">

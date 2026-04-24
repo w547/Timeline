@@ -238,12 +238,12 @@
     font-size: 14px;
 }
 
-/* 收藏项 - 优化后的布局 */
+/* 收藏项 - 优化后的布局（支持多行文本） */
 .timeline-starred-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
-    padding: 6px 36px 6px 12px;
+    padding: 8px 36px 8px 12px;
     margin-bottom: 2px;
     border-radius: 18px;
     background: transparent;
@@ -302,7 +302,7 @@
 }
 
 
-/* 名称文本 */
+/* 名称文本 - 完整展示 */
 .timeline-starred-item-name {
     flex: 1;
     min-width: 0;
@@ -310,9 +310,9 @@
     font-weight: 500;
     line-height: 1.5;
     color: #444746;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-word;
+    word-wrap: break-word;
+    white-space: pre-wrap;
     cursor: pointer;
     transition: color 0.15s ease;
 }

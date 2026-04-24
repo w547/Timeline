@@ -231,7 +231,10 @@ class FolderManager {
             url: item.url || `https://${info.urlWithoutProtocol}`,
             urlWithoutProtocol: info.urlWithoutProtocol,
             index: info.nodeKey, nodeId: info.nodeKey,
-            theme: item.question || '整个对话',
+            // ✅ 完整内容用于编辑
+            fullContent: item.question || '整个对话',
+            // ✅ 截断内容用于列表展示（最多50字符）
+            theme: item.question ? (item.question.length > 50 ? item.question.substring(0, 50) + '...' : item.question) : '整个对话',
             timestamp: item.timestamp || 0,
             folderId: item.folderId,
             pinned: !!item.pinned

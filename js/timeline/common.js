@@ -461,30 +461,61 @@ const StarStorageManager = {
     },
 
     /**
-     * 添加或更新收藏
+     * 添加或更新收藏（带验证）
      * @param {Object} item - 收藏项（必须包含 key 字段）
+     * @returns {Promise<boolean>} 是否添加成功
      */
     async add(item) {
-        if (!item || !item.key) return;
-        const items = await this.getAll();
-        const existingIndex = items.findIndex(i => i.key === item.key);
-        if (existingIndex >= 0) {
-            items[existingIndex] = item;
-        } else {
-            items.push(item);
+        if (!item || !item.key) return false;
+        try {
+            const items = await this.getAll();
+            const existingIndex = items.findIndex(i => i.key === item.key);
+            if (existingIndex >= 0) {
+                items[existingIndex] = item;
+            } else {
+                items.push(item);
+            }
+            await StorageAdapter.set(this.STORAGE_KEY, items);
+            
+            // 验证保存是否成功
+            const saved = await this.findByKey(item.key);
+            if (!saved) {
+                console.error('[StarStorageManager] ⚠️ 收藏保存失败，尝试重新保存:', item.key);
+                // 尝试重新保存
+                await StorageAdapter.set(this.STORAGE_KEY, items);
+            }
+            return true;
+        } catch (e) {
+            console.error('[StarStorageManager] ❌ 添加收藏失败:', e);
+            return false;
         }
-        await StorageAdapter.set(this.STORAGE_KEY, items);
     },
 
     /**
-     * 移除收藏
+     * 移除收藏（带验证）
      * @param {string} key - 收藏项的 key
+     * @returns {Promise<boolean>} 是否移除成功
      */
     async remove(key) {
-        if (!key) return;
-        const items = await this.getAll();
-        const filtered = items.filter(item => item.key !== key);
-        await StorageAdapter.set(this.STORAGE_KEY, filtered);
+        if (!key) return false;
+        try {
+            const items = await this.getAll();
+            const filtered = items.filter(item => item.key !== key);
+            await StorageAdapter.set(this.STORAGE_KEY, filtered);
+            
+            // 验证移除是否成功
+            const stillExists = await this.findByKey(key);
+            if (stillExists) {
+                console.error('[StarStorageManager] ⚠️ 收藏移除失败，尝试重新移除:', key);
+                const items2 = await this.getAll();
+                const filtered2 = items2.filter(item => item.key !== key);
+                await StorageAdapter.set(this.STORAGE_KEY, filtered2);
+            }
+            return true;
+        } catch (e) {
+            console.error('[StarStorageManager] ❌ 移除收藏失败:', e);
+            return false;
+        }
     },
 
     /**
@@ -827,6 +858,130 @@ const ChatTimeStorageManager = {
         return cleanedCount;
     }
 };
+
+// ==================== Storage Health Check (登记注册) ====================
+/**
+ * 存储健康检查 - 确保收藏数据能够正确持久化
+ * 在每次扩展加载时执行，验证存储功能正常
+ */
+const StorageHealthCheck = {
+    REGISTRATION_KEY: '_aitStorageRegistered',
+    LAST_CHECK_KEY: '_aitStorageLastCheck',
+    
+    /**
+     * 执行存储健康检查
+     */
+    async check() {
+        try {
+            // 1. 读取注册标记
+            const regData = await StorageAdapter.get(this.REGISTRATION_KEY);
+            
+            // 2. 读取上次检查的收藏数据快照
+            const lastSnapshot = await StorageAdapter.get(this.LAST_CHECK_KEY);
+            
+            // 3. 验证存储是否正常工作
+            const testKey = '_aitHealthTest_' + Date.now();
+            const testValue = Math.random().toString(36);
+            
+            await StorageAdapter.set(testKey, testValue);
+            const retrieved = await StorageAdapter.get(testKey);
+            
+            // 清理测试数据
+            await StorageAdapter.remove(testKey);
+            
+            // 4. 检查存储功能是否正常
+            if (retrieved !== testValue) {
+                console.error('[StorageHealthCheck] ❌ 存储功能异常！写入和读取的值不匹配');
+                return { healthy: false, reason: 'storage_mismatch' };
+            }
+            
+            // 5. 检查是否是首次运行或数据丢失
+            const now = Date.now();
+            const isFirstRun = !regData;
+            
+            if (isFirstRun) {
+                // 首次运行，登记注册
+                await this.register(now);
+                console.log('[StorageHealthCheck] ✅ 首次运行，已完成存储登记');
+                return { healthy: true, firstRun: true };
+            }
+            
+            // 6. 检查注册时间戳
+            const regTime = regData?.timestamp || 0;
+            const daysSinceReg = (now - regTime) / (1000 * 60 * 60 * 24);
+            
+            // 7. 更新检查时间
+            await StorageAdapter.set(this.LAST_CHECK_KEY, {
+                timestamp: now,
+                checkCount: (lastSnapshot?.checkCount || 0) + 1,
+                lastStarsCount: lastSnapshot?.starsCount || 0
+            });
+            
+            console.log(`[StorageHealthCheck] ✅ 存储健康检查通过 (注册于 ${Math.floor(daysSinceReg)} 天前)`);
+            return { healthy: true, firstRun: false, daysSinceReg };
+            
+        } catch (e) {
+            console.error('[StorageHealthCheck] ❌ 健康检查异常:', e);
+            return { healthy: false, reason: 'exception', error: e.message };
+        }
+    },
+    
+    /**
+     * 登记注册
+     */
+    async register(timestamp) {
+        const data = {
+            timestamp: timestamp || Date.now(),
+            version: typeof chrome !== 'undefined' ? chrome.runtime.getManifest()?.version : 'unknown',
+            platform: typeof navigator !== 'undefined' ? navigator.platform : 'unknown'
+        };
+        await StorageAdapter.set(this.REGISTRATION_KEY, data);
+        await StorageAdapter.set(this.LAST_CHECK_KEY, {
+            timestamp: Date.now(),
+            checkCount: 0,
+            starsCount: 0
+        });
+    },
+    
+    /**
+     * 获取存储统计信息（用于调试）
+     */
+    async getStats() {
+        try {
+            const regData = await StorageAdapter.get(this.REGISTRATION_KEY);
+            const stars = await StarStorageManager.getAll();
+            const folders = await StorageAdapter.get('folders');
+            
+            return {
+                registered: !!regData,
+                regTime: regData?.timestamp,
+                version: regData?.version,
+                totalStars: stars.length,
+                totalFolders: Array.isArray(folders) ? folders.length : 0,
+                storageKeys: await this.getStorageKeys()
+            };
+        } catch (e) {
+            return { error: e.message };
+        }
+    },
+    
+    /**
+     * 获取当前存储的所有 key（调试用）
+     */
+    async getStorageKeys() {
+        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+            return new Promise((resolve) => {
+                chrome.storage.local.get(null, (items) => {
+                    resolve(Object.keys(items));
+                });
+            });
+        }
+        return [];
+    }
+};
+
+// 异步执行存储健康检查（不阻塞主流程）
+StorageHealthCheck.check().catch(() => {});
 
 // ==================== 执行迁移 ====================
 // 在脚本加载时立即执行迁移检查（异步，不阻塞）
