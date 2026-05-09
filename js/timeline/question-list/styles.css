@@ -24,9 +24,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 8px 10px 12px;
+    padding: 8px 8px 8px 8px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     flex-shrink: 0;
+    gap: 6px;
 }
 
 .ait-ql-title {
@@ -34,12 +35,73 @@
     font-weight: 600;
     color: #1d1d1f;
     letter-spacing: -0.01em;
+    flex-shrink: 0;
+    margin-left: 6px;
 }
 
 .ait-ql-header-right {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
+    margin-left: auto;
+}
+
+/* ========== Merge Button (最显眼位置，始终可见) ========== */
+.ait-ql-merge-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border: none;
+    background: #3b82f6;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.01em;
+}
+
+.ait-ql-merge-btn:hover {
+    background: #2563eb;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+
+.ait-ql-merge-btn:active {
+    transform: scale(0.97);
+}
+
+.ait-ql-merge-btn:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.ait-ql-merge-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* ========== Item Checkbox ========== */
+.ait-ql-item-checkbox {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #3b82f6;
+    flex-shrink: 0;
+    margin: 0 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.ait-ql-item:hover .ait-ql-item-checkbox,
+.ait-ql-item-checkbox:checked {
+    opacity: 1;
 }
 
 .ait-ql-settings,
@@ -225,3 +287,23 @@ html[data-timeline-theme="dark"] .ait-ql-empty { color: #8e8e93; }
 
 html[data-timeline-theme="dark"] .ait-ql-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); }
 html[data-timeline-theme="dark"] .ait-ql-list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.35); }
+
+/* dark mode: merge button */
+html[data-timeline-theme="dark"] .ait-ql-merge-btn {
+    background: #3b82f6;
+    color: #fff;
+}
+html[data-timeline-theme="dark"] .ait-ql-merge-btn:hover {
+    background: #60a5fa;
+    box-shadow: 0 2px 8px rgba(96, 165, 250, 0.35);
+}
+html[data-timeline-theme="dark"] .ait-ql-merge-btn:disabled {
+    background: #374151;
+    color: #6b7280;
+    box-shadow: none;
+}
+
+/* dark mode: item checkbox */
+html[data-timeline-theme="dark"] .ait-ql-item-checkbox {
+    accent-color: #60a5fa;
+}

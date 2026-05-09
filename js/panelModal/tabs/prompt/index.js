@@ -272,15 +272,12 @@ class PromptTab extends BaseTab {
                 <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/>
             </svg> ${chrome.i18n.getMessage('promptExtractProcessing') || '炼化中...'}`;
             
+            // 关闭选择弹窗
+            this._closeExtractModal(overlay);
+            
             try {
-                // 执行提炼
-                const result = extractor.extractTemplate(questions);
-                
-                // 显示结果预览
-                this.showExtractResultModal(result, folderId);
-                
-                // 关闭选择弹窗
-                this._closeExtractModal(overlay);
+                // ✅ 新流程：创建新AI对话 + 自动发送 + 保存AI回复
+                await this._refineWithAI(questions, folderId);
             } catch (e) {
                 console.error('[PromptTab] Extract failed:', e);
                 if (window.globalToastManager) {
@@ -311,6 +308,355 @@ class PromptTab extends BaseTab {
         setTimeout(() => {
             if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
         }, 200);
+    }
+
+    /**
+     * ✅ 新炼化流程：创建新AI对话、自动发送深度分析prompt、保存AI回复到提示词
+     */
+    async _refineWithAI(questions, folderId) {
+        const folderName = folderId 
+            ? (await this._getFolderName(folderId) || '炼化模板')
+            : '炼化模板';
+
+        // 构建深度分析prompt
+        const questionsText = questions.map((q, i) => `${i + 1}. ${q.content || q.theme || ''}`).join('\n');
+        
+        const refinedPrompt = `【问题分析任务】
+        
+请AI分析并整理以下所有问题，重点关注问题间的关联逻辑、提问技巧及对模糊领域的处理方式。
+
+## 原始问题列表
+${questionsText}
+
+## 分析要求
+1. **关联分析**：找出各问题之间的逻辑关联、递进关系、互补关系
+2. **提问技巧**：分析提问者的提问策略和技巧
+3. **模糊领域处理**：识别并分析对模糊、不确定领域的提问方式
+
+## 输出要求
+1. 输出一份**完整的Skill提示词**，可作为该研究领域的系统指令
+2. 生成**3-5个层层深入的提问模板语句**（从基础认知到深层探索）
+
+请按照以下格式输出：
+
+### 完整Skill提示词
+[系统指令内容]
+
+### 层层深入提问模板
+1. [第一层：基础认知提问]
+2. [第二层：深入理解提问]
+3. [第三层：关联延伸提问]
+4. [第四层：批判反思提问]
+5. [第五层：创新应用提问]`;
+
+        if (window.globalToastManager) {
+            window.globalToastManager.info('正在创建新对话并发送炼化提示词...');
+        }
+
+        try {
+            // 1. 创建新AI对话
+            await this._startNewConversation();
+            await this._waitForInputReady();
+
+            // 2. 插入prompt到输入框
+            const inputElement = this._findInputElement();
+            if (!inputElement) {
+                throw new Error('未找到AI输入框');
+            }
+
+            inputElement.focus();
+            if (inputElement.isContentEditable) {
+                inputElement.textContent = refinedPrompt;
+                inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+            } else {
+                inputElement.value = refinedPrompt;
+                inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            // 3. 自动发送
+            await new Promise(resolve => setTimeout(resolve, 300));
+            this._autoSend(inputElement);
+
+            // 4. 等待AI回复并保存到提示词
+            if (window.globalToastManager) {
+                window.globalToastManager.info('已自动发送，正在等待AI回复...');
+            }
+
+            const response = await this._waitForAIResponse();
+            if (response && response.trim().length > 100) {
+                await this._saveAIResponseToPrompts(response, folderName, questions.length);
+            } else {
+                if (window.globalToastManager) {
+                    window.globalToastManager.show('warning', 'AI回复获取失败或内容过短');
+                }
+            }
+        } catch (e) {
+            console.error('[PromptTab] _refineWithAI error:', e);
+            if (window.globalToastManager) {
+                window.globalToastManager.show('error', '炼化流程失败: ' + (e.message || '未知错误'));
+            }
+        }
+    }
+
+    /**
+     * 获取文件夹名称
+     */
+    async _getFolderName(folderId) {
+        try {
+            const result = await chrome.storage.local.get('folders');
+            const folders = result.folders || [];
+            const folder = folders.find(f => f.id === folderId);
+            return folder?.name || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * 创建新AI对话
+     */
+    async _startNewConversation() {
+        try {
+            const adapter = window.smartEnterAdapterRegistry?.getAdapter?.();
+            if (adapter && typeof adapter.startNewConversation === 'function') {
+                const result = await adapter.startNewConversation();
+                if (result) return true;
+            }
+            
+            // 备选方案：导航到根路径
+            const currentUrl = location.href;
+            const baseUrl = location.origin;
+            if (currentUrl.includes('/c/') || currentUrl.includes('/g/')) {
+                window.location.href = baseUrl;
+                await new Promise(resolve => setTimeout(resolve, 2500));
+                return true;
+            }
+            
+            return false;
+        } catch (e) {
+            console.error('[PromptTab] startNewConversation failed:', e);
+            return false;
+        }
+    }
+
+    /**
+     * 等待输入框就绪
+     */
+    async _waitForInputReady(maxWait = 10000) {
+        const startTime = Date.now();
+        while (Date.now() - startTime < maxWait) {
+            const inputEl = this._findInputElement();
+            if (inputEl && inputEl.offsetParent !== null) return true;
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        return false;
+    }
+
+    /**
+     * 查找输入框
+     */
+    _findInputElement() {
+        try {
+            const adapter = window.smartEnterAdapterRegistry?.getAdapter?.();
+            if (adapter) {
+                const selector = adapter.getInputSelector?.();
+                if (selector) {
+                    const el = document.querySelector(selector);
+                    if (el && el.offsetParent !== null) return el;
+                }
+            }
+        } catch (e) {}
+        
+        const selectors = [
+            '#prompt-textarea',
+            'textarea[placeholder*="问"]',
+            'textarea[placeholder*="message"]',
+            'textarea[placeholder*="Message"]',
+            'div[contenteditable="true"]',
+            '[role="textbox"]',
+            'textarea'
+        ];
+        for (const sel of selectors) {
+            const el = document.querySelector(sel);
+            if (el && el.offsetParent !== null) return el;
+        }
+        return null;
+    }
+
+    /**
+     * 自动发送消息
+     */
+    _autoSend(inputElement) {
+        try {
+            const sendBtn = this._findSendButton();
+            if (sendBtn && !sendBtn.disabled) {
+                sendBtn.click();
+            } else {
+                const enterEvent = new KeyboardEvent('keydown', {
+                    key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true
+                });
+                inputElement.dispatchEvent(enterEvent);
+            }
+            console.log('[PromptTab] 消息已自动发送');
+        } catch (e) {
+            console.error('[PromptTab] autoSend failed:', e);
+        }
+    }
+
+    /**
+     * 查找发送按钮
+     */
+    _findSendButton() {
+        try {
+            const adapter = window.smartEnterAdapterRegistry?.getAdapter?.();
+            if (adapter) {
+                const selector = adapter.getSendButtonSelector?.();
+                if (selector) {
+                    const btn = document.querySelector(selector);
+                    if (btn && btn.offsetParent !== null) return btn;
+                }
+            }
+        } catch (e) {}
+        
+        const selectors = [
+            '#composer-submit-button',
+            'button[data-testid="send-button"]',
+            'button[type="submit"]',
+            'button[aria-label*="send" i]',
+            'button[aria-label*="发送" i]',
+            'button[aria-label*="Send" i]',
+            '.send-button',
+            '[data-testid="send-button"]'
+        ];
+        for (const sel of selectors) {
+            const btn = document.querySelector(sel);
+            if (btn && btn.offsetParent !== null) return btn;
+        }
+        return null;
+    }
+
+    /**
+     * 等待AI回复
+     */
+    _waitForAIResponse() {
+        const MAX_WAIT = 180000; // 180秒
+        const POLL_INTERVAL = 3000;
+        const startTime = Date.now();
+        let lastLength = 0;
+        let stableCount = 0;
+
+        return new Promise((resolve) => {
+            const poll = setInterval(() => {
+                const currentResponse = this._getLatestAIResponse();
+                const currentLength = currentResponse?.length || 0;
+
+                if (currentLength > 200) {
+                    if (Math.abs(currentLength - lastLength) < 30) {
+                        stableCount++;
+                    } else {
+                        stableCount = 0;
+                    }
+                    lastLength = currentLength;
+                }
+
+                // 判断是否完成
+                const hasCompleteMarkers = currentResponse && (
+                    currentResponse.includes('完整Skill提示词') ||
+                    currentResponse.includes('层层深入') ||
+                    currentResponse.includes('提问框架')
+                );
+
+                const isStable = stableCount >= 3 && currentLength > 500;
+                const isComplete = hasCompleteMarkers && currentLength > 500;
+
+                if (isComplete || isStable) {
+                    clearInterval(poll);
+                    console.log('[PromptTab] AI回复完成, 长度:', currentLength);
+                    resolve(currentResponse);
+                    return;
+                }
+
+                if (Date.now() - startTime >= MAX_WAIT) {
+                    clearInterval(poll);
+                    console.log('[PromptTab] 等待超时, 返回当前内容长度:', currentLength);
+                    resolve(currentResponse || '');
+                }
+            }, POLL_INTERVAL);
+        });
+    }
+
+    /**
+     * 获取最新AI回复
+     */
+    _getLatestAIResponse() {
+        try {
+            const adapter = window.smartEnterAdapterRegistry?.getAdapter?.();
+            if (adapter) {
+                const aiSelector = adapter.getAIMessageSelector?.();
+                if (aiSelector) {
+                    const elements = document.querySelectorAll(aiSelector);
+                    if (elements.length > 0) {
+                        for (let i = elements.length - 1; i >= 0; i--) {
+                            const text = (elements[i].textContent || '').trim();
+                            if (text.length > 100 && !text.includes('【问题分析任务】')) {
+                                return text;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
+
+        const selectors = [
+            '[data-message-author-role="assistant"]',
+            '[data-role="assistant"]',
+            '.markdown-body',
+            '.prose'
+        ];
+        for (const sel of selectors) {
+            const elements = document.querySelectorAll(sel);
+            for (let i = elements.length - 1; i >= 0; i--) {
+                const text = (elements[i].textContent || '').trim();
+                if (text.length > 100 && !text.includes('【问题分析任务】')) {
+                    return text;
+                }
+            }
+        }
+        return '';
+    }
+
+    /**
+     * 保存AI回复到提示词
+     */
+    async _saveAIResponseToPrompts(responseText, folderName, questionCount) {
+        try {
+            const result = await chrome.storage.local.get('prompts');
+            const prompts = result.prompts || [];
+            
+            const timestamp = new Date().toLocaleString('zh-CN');
+            const promptName = `${folderName}_炼化结果_${timestamp}`;
+            
+            const newPrompt = {
+                id: `refined_${Date.now()}`,
+                name: promptName.substring(0, 50),
+                content: responseText,
+                platformId: '',
+                createdAt: Date.now(),
+                source: 'refined_ai',
+                sourceFolder: folderName,
+                questionCount: questionCount
+            };
+            
+            prompts.push(newPrompt);
+            await chrome.storage.local.set({ prompts });
+            
+            console.log('[PromptTab] AI回复已保存到提示词:', promptName);
+            if (window.globalToastManager) {
+                window.globalToastManager.success(`AI炼化结果已保存到提示词`);
+            }
+        } catch (e) {
+            console.error('[PromptTab] 保存AI回复失败:', e);
+        }
     }
     
     /**
