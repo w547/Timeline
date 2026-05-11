@@ -86,7 +86,7 @@ class FolderManager {
      * 删除文件夹
      * @param {string} folderId - 要删除的文件夹 ID
      * @param {Object} [options]
-     * @param {boolean} [options.deleteItems=true] - true: 连同收藏项一起删除; false: 移到未分类
+     * @param {boolean} [options.deleteItems=true] - true: 连同收藏项一起删除; false: 移到全部问题
      */
     async deleteFolder(folderId, options = {}) {
         const { deleteItems = true } = options;
@@ -126,7 +126,7 @@ class FolderManager {
     /**
      * 移动收藏项到文件夹
      * @param {string} turnId - 收藏项 ID（格式：url:index）
-     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 未分类）
+     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 全部问题）
      */
     async moveStarredToFolder(turnId, targetFolderId) {
         // 构建原始的 storage key: chatTimelineStar:url:index
@@ -162,7 +162,7 @@ class FolderManager {
      * 4. 返回移动结果统计
      * 
      * @param {string[]} turnIds - 收藏项 ID 数组
-     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 未分类）
+     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 全部问题）
      * @returns {Promise<{success: number, failed: number, errors: string[]}>}
      */
     async moveStarredItemsToFolder(turnIds, targetFolderId) {
@@ -187,6 +187,58 @@ class FolderManager {
         }
         
         console.log(`[FolderManager] 批量移动完成: 成功 ${results.success}, 失败 ${results.failed}`);
+        return results;
+    }
+
+    /**
+     * 复制收藏项到另一文件夹（保留原项，创建副本到目标文件夹）
+     * 副本使用原 key + 时间戳后缀确保唯一性，保持相同的 timestamp 使编号不变
+     * @param {string} turnId - 收藏项 ID（格式：url:index）
+     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 全部问题）
+     */
+    async copyStarredToFolder(turnId, targetFolderId) {
+        const key = `chatTimelineStar:${turnId}`;
+        const item = await StarStorageManager.findByKey(key);
+
+        if (!item) {
+            throw new Error('收藏项不存在');
+        }
+
+        // 构建副本，新 key = 原 turnId + _copy_ + 时间戳，确保唯一性
+        const copyKey = `chatTimelineStar:${turnId}_copy_${Date.now()}`;
+        const copyItem = {
+            ...item,
+            key: copyKey,
+            folderId: targetFolderId,
+            // 保留原 timestamp，使全局排序编号不变
+            timestamp: item.timestamp || 0
+        };
+
+        await StarStorageManager.add(copyItem);
+        console.log('[FolderManager] Copied starred:', turnId, '→ folder:', targetFolderId);
+    }
+
+    /**
+     * 批量复制收藏项到文件夹
+     * @param {string[]} turnIds - 收藏项 ID 数组
+     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 全部问题）
+     * @returns {Promise<{success: number, failed: number, errors: string[]}>}
+     */
+    async copyStarredItemsToFolder(turnIds, targetFolderId) {
+        const results = { success: 0, failed: 0, errors: [] };
+
+        for (const turnId of turnIds) {
+            try {
+                await this.copyStarredToFolder(turnId, targetFolderId);
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`${turnId}: ${error.message}`);
+                console.error(`[FolderManager] 复制收藏项失败: ${turnId}`, error);
+            }
+        }
+
+        console.log(`[FolderManager] 批量复制完成: 成功 ${results.success}, 失败 ${results.failed}`);
         return results;
     }
     
@@ -249,7 +301,7 @@ class FolderManager {
         // 构建树状结构
         const tree = {
             folders: [],      // 根文件夹列表
-            uncategorized: [] // 未分类收藏项（默认文件夹）
+            uncategorized: [] // 全部问题收藏项
         };
         
         // 创建文件夹 ID 集合，用于快速查找
@@ -305,12 +357,12 @@ class FolderManager {
             tree.folders.push(folderNode);
         }
         
-        // 3. 添加未分类收藏项（没有 folderId 或 folderId 指向已删除文件夹的收藏项）
+        // 3. 添加全部问题收藏项（没有 folderId 或 folderId 指向已删除文件夹的收藏项）
         
         for (const item of starredItemsArray) {
             const { urlWithoutProtocol, nodeKey, turnId } = extractItemInfo(item);
             
-            // 如果该收藏项还没有被分配到任何文件夹，则归为未分类（默认文件夹）
+            // 如果该收藏项还没有被分配到任何文件夹，则归为全部问题
             // 这包括：folderId 为 null/undefined 或 folderId 指向已删除的文件夹
             if (!assignedTurnIds.has(turnId)) {
                 tree.uncategorized.push(mapItem(item, { urlWithoutProtocol, nodeKey, turnId }));

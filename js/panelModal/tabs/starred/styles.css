@@ -301,6 +301,17 @@
     border-radius: 4px;
 }
 
+/* 收藏时间顺序编号（1, 2, 3...），加粗，放在 logo 前面 */
+.timeline-starred-item-seq {
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #6b7280;
+    min-width: 22px;
+    text-align: right;
+    margin-right: 2px;
+}
+
 
 /* 名称文本 - 完整展示 */
 .timeline-starred-item-name {
@@ -637,7 +648,7 @@
 .ait-folder-header:hover .ait-pin-indicator,
 .timeline-starred-item:hover .ait-pin-indicator { display: none; }
 
-/* 默认文件夹（虚拟）：不显示操作按钮 */
+/* 全部问题文件夹（虚拟）：不显示操作按钮 */
 .default-folder .ait-folder-actions {
     display: none !important;
 }
@@ -846,6 +857,9 @@ html[data-timeline-theme="dark"] .timeline-starred-item.active:hover { backgroun
 
 body.dark-theme .timeline-starred-item-initial,
 html[data-timeline-theme="dark"] .timeline-starred-item-initial { background: #3c4043; color: #bdc1c6; }
+
+body.dark-theme .timeline-starred-item-seq,
+html[data-timeline-theme="dark"] .timeline-starred-item-seq { color: #9aa0a6; }
 
 body.dark-theme .timeline-starred-item-edit svg,
 body.dark-theme .timeline-starred-item-copy svg,

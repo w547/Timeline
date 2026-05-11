@@ -96,7 +96,8 @@ class StarInputModal {
                 confirmText: options.confirmText || chrome.i18n.getMessage('vkmzpx'),
                 cancelText: options.cancelText || chrome.i18n.getMessage('pxvkmz'),
                 folderManager: options.folderManager,
-                defaultFolderId: options.defaultFolderId || null
+                defaultFolderId: options.defaultFolderId || null,
+                lockFolder: options.lockFolder || false
             };
             
             return await this._showModal(config);
@@ -194,6 +195,11 @@ class StarInputModal {
             const cancelBtn = dialog.querySelector('.star-input-modal-cancel');
             const folderSelector = dialog.querySelector('.star-input-modal-folder-selector');
             const folderText = dialog.querySelector('.star-input-modal-folder-text');
+            
+            // 🔒 锁定文件夹选择器（用于全部问题中的项目）
+            if (config.lockFolder) {
+                folderSelector.style.display = 'none';
+            }
             
             // 文件夹选择器相关
             let selectedFolderId = config.defaultFolderId || null;

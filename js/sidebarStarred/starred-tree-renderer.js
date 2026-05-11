@@ -94,6 +94,9 @@ class StarredTreeRenderer {
         this._folderDataMap.clear();
         this._itemDataMap.clear();
 
+        // ✅ 构建全局编号（按 timestamp 升序，0001 开始）
+        this._globalSeqArray = this._buildGlobalSequence(tree);
+
         if (window.globalTooltipManager?.forceHideAll) {
             window.globalTooltipManager.forceHideAll();
         }
@@ -209,6 +212,19 @@ class StarredTreeRenderer {
         `;
         moveBtn.addEventListener('click', () => this._handleBatchMove());
         batchActions.appendChild(moveBtn);
+
+        // 复制选中项按钮
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'ait-batch-action-btn copy';
+        copyBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span>${chrome.i18n.getMessage('copySelected') || '复制选中项'}</span>
+        `;
+        copyBtn.addEventListener('click', () => this._handleBatchCopy());
+        batchActions.appendChild(copyBtn);
 
         // 取消按钮
         const cancelBtn = document.createElement('button');
@@ -342,7 +358,7 @@ class StarredTreeRenderer {
 
         const info = document.createElement('div');
         info.className = 'ait-folder-info';
-        info.innerHTML = `<span class="ait-folder-icon">${isExpanded ? this._folderSvgOpen : this._folderSvgClosed}</span><span class="ait-folder-name">${chrome.i18n.getMessage('defaultFolder') || 'Default'}</span>`;
+        info.innerHTML = `<span class="ait-folder-icon">${isExpanded ? this._folderSvgOpen : this._folderSvgClosed}</span><span class="ait-folder-name">${chrome.i18n.getMessage('defaultFolder') || '全部问题'}</span>`;
         info.style.cursor = 'pointer';
 
         header.appendChild(toggle);
@@ -385,6 +401,22 @@ class StarredTreeRenderer {
         checkbox.dataset.turnId = item.turnId;
         // 非多选模式时复选框不显示，但保持可点击（用于切换多选模式）
         el.appendChild(checkbox);
+
+        // ✅ 收藏时间顺序编号（1, 2, 3...），加粗，放在 logo 前面
+        // 副本项复用原项的编号
+        if (this._globalSeqArray) {
+            const lookupTurnId = item.turnId.includes('_copy_')
+                ? item.turnId.split('_copy_')[0]
+                : item.turnId;
+            const seqIdx = this._globalSeqArray.findIndex(s => s.turnId === lookupTurnId);
+            if (seqIdx !== -1) {
+                const seqNo = String(seqIdx + 1);
+                const seqEl = document.createElement('span');
+                seqEl.className = 'timeline-starred-item-seq';
+                seqEl.textContent = seqNo;
+                el.appendChild(seqEl);
+            }
+        }
 
         if (this.opts.showPlatformIcon) {
             const siteInfo = getSiteInfoByUrl(item.url);
@@ -604,11 +636,34 @@ class StarredTreeRenderer {
             if (!_itemCD) return;
             if (_itemCD.active) {
                 const target = this._detectDropTarget(e.clientX, e.clientY, _itemCD.turnId);
+
+                // 🔒 全部问题中的项目不允许拖出（自动转为复制）
+                const isFromDefault = _itemCD.sourceFolderId === null;
+
                 if (target?.type === 'item') {
-                    const actualFid = target.folderId === '__default__' ? null : target.folderId;
+                    const targetIsDefault = target.folderId === '__default__';
+                    // 🔒 不允许从其他文件夹拖入"全部问题"
+                    if (!isFromDefault && targetIsDefault) {
+                        this._toast('warning', '',
+                            '「全部问题」仅通过收藏新增问题，不支持拖拽移入。请拖拽到其他文件夹。');
+                        itemCDCleanup();
+                        return;
+                    }
+
+                    const actualFid = targetIsDefault ? null : target.folderId;
                     const draggedTurnId = _itemCD.turnId;
 
-                    // [可能移除] 拖拽自动置顶：在 DOM 重渲染前推断 pinned 状态
+                    // 🔒 来自"全部问题"拖到其他文件夹 → 自动复制
+                    if (isFromDefault && !targetIsDefault) {
+                        this.folderManager.copyStarredToFolder(draggedTurnId, actualFid).then(() => {
+                            this._toastAtFolder(target.folderEl, '', '已复制');
+                            this.opts.onAfterAction();
+                        }).catch(err => console.error('[StarredTreeRenderer] Item copy failed:', err));
+                        itemCDCleanup();
+                        return;
+                    }
+
+                    // 正常移动/排序（包括"全部问题"内部拖拽排序）
                     const shouldPin = this._inferPinFromDrop(target.itemEl);
                     const currentItem = this._itemDataMap.get(draggedTurnId);
                     const needsPinChange = currentItem && (!!currentItem.pinned !== shouldPin);
@@ -616,7 +671,6 @@ class StarredTreeRenderer {
                     this.folderManager.reorderStarredInFolder(
                         draggedTurnId, actualFid, target.turnId, target.position
                     ).then(async () => {
-                        // [可能移除] 拖拽自动置顶：同步 pinned 状态到 storage
                         if (needsPinChange) {
                             await StarStorageManager.update(`chatTimelineStar:${draggedTurnId}`, { pinned: shouldPin });
                         }
@@ -624,12 +678,26 @@ class StarredTreeRenderer {
                         this.opts.onAfterAction();
                     }).catch(err => console.error('[StarredTreeRenderer] Item reorder failed:', err));
                 } else if (target?.type === 'folder') {
+                    const targetIsDefault = target.folderId === '__default__';
+                    // 🔒 不允许从其他文件夹拖入"全部问题"；来自"全部问题"拖入"全部问题"无意义
+                    if (targetIsDefault) {
+                        itemCDCleanup();
+                        return;
+                    }
                     const actualId = target.folderId === '__default__' ? null : target.folderId;
                     if (actualId !== _itemCD.sourceFolderId) {
-                        this.folderManager.moveStarredToFolder(_itemCD.turnId, actualId).then(() => {
-                            this._toastAtFolder(target.folderEl, 'dragMoveSuccess', 'Moved');
-                            this.opts.onAfterAction();
-                        }).catch(err => console.error('[StarredTreeRenderer] Item move failed:', err));
+                        // 🔒 来自"全部问题"的拖拽 → 自动复制
+                        if (isFromDefault) {
+                            this.folderManager.copyStarredToFolder(_itemCD.turnId, actualId).then(() => {
+                                this._toastAtFolder(target.folderEl, '', '已复制');
+                                this.opts.onAfterAction();
+                            }).catch(err => console.error('[StarredTreeRenderer] Item copy failed:', err));
+                        } else {
+                            this.folderManager.moveStarredToFolder(_itemCD.turnId, actualId).then(() => {
+                                this._toastAtFolder(target.folderEl, 'dragMoveSuccess', 'Moved');
+                                this.opts.onAfterAction();
+                            }).catch(err => console.error('[StarredTreeRenderer] Item move failed:', err));
+                        }
                     }
                 } else {
                     const listContainer = this.opts.getListContainer();
@@ -769,11 +837,28 @@ class StarredTreeRenderer {
             const targetFolderId = folderEl.dataset.folderId;
 
             if (this._dragState.type === 'item') {
-                const actualTargetId = targetFolderId === '__default__' ? null : targetFolderId;
+                const targetIsDefault = targetFolderId === '__default__';
+                const sourceIsDefault = this._dragState.sourceFolderId === null ||
+                    this._dragState.sourceFolderId === undefined;
+                // 🔒 不允许从其他文件夹拖入"全部问题"；来自"全部问题"拖入自身无意义
+                if (targetIsDefault && !sourceIsDefault) {
+                    this._toast('warning', '',
+                        '「全部问题」仅通过收藏新增问题，不支持拖拽移入。请拖拽到其他文件夹。');
+                    this._cleanupDrag(); return;
+                }
+                if (targetIsDefault && sourceIsDefault) { this._cleanupDrag(); return; }
+                const actualTargetId = targetIsDefault ? null : targetFolderId;
                 if (actualTargetId === this._dragState.sourceFolderId) { this._cleanupDrag(); return; }
+
+                // 🔒 来自"全部问题"的拖拽 → 自动复制
                 try {
-                    await this.folderManager.moveStarredToFolder(this._dragState.id, actualTargetId);
-                    this._toast('success', 'dragMoveSuccess', 'Moved');
+                    if (sourceIsDefault) {
+                        await this.folderManager.copyStarredToFolder(this._dragState.id, actualTargetId);
+                        this._toast('success', '', '已复制');
+                    } else {
+                        await this.folderManager.moveStarredToFolder(this._dragState.id, actualTargetId);
+                        this._toast('success', 'dragMoveSuccess', 'Moved');
+                    }
                     await this.opts.onAfterAction();
                 } catch (err) {
                     console.error('[StarredTreeRenderer] Drag move failed:', err);
@@ -945,11 +1030,12 @@ class StarredTreeRenderer {
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
                 onClick: () => this.handleEditStarred(item.turnId, item.fullContent, item.folderId)
             },
-            {
+            // 🔒 全部问题中的项目不允许移动，隐藏"移动到"菜单项
+            ...(item.folderId !== null ? [{
                 label: chrome.i18n.getMessage('vxkpmz') || 'Move to',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
                 onClick: () => this.handleEditStarred(item.turnId, item.fullContent, item.folderId)
-            },
+            }] : []),
             {
                 label: chrome.i18n.getMessage('mvkxpz') || 'Copy',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
@@ -1021,6 +1107,49 @@ class StarredTreeRenderer {
             await this.opts.onAfterAction();
         } catch (error) {
             console.error('[StarredTreeRenderer] Create folder failed:', error);
+            if (error.message) this._toast('error', '', error.message);
+        }
+    }
+
+    /**
+     * 从下拉菜单中创建文件夹，创建后自动执行批量操作
+     * 用户在移动/复制下拉栏选择"新增文件夹"，创建完成后自动执行对应操作
+     * @param {string|null} parentId - 父文件夹 ID
+     * @param {string[]} turnIds - 已勾选的项目 ID
+     * @param {'move'|'copy'} operationType - 操作类型
+     */
+    async _createFolderAndAutoExecute(parentId = null, turnIds, operationType) {
+        if (!window.folderEditModal) return;
+
+        try {
+            const result = await window.folderEditModal.show({
+                mode: 'create',
+                title: chrome.i18n.getMessage('kxvpmz') || 'New Folder',
+                placeholder: chrome.i18n.getMessage('vzkpmx') || 'Folder name',
+                requiredMessage: chrome.i18n.getMessage('kmxpvz') || 'Name is required',
+                maxLength: 15
+            });
+            if (!result) return;
+
+            const exists = await this.folderManager.isFolderNameExists(result.name, parentId);
+            if (exists) { this._toast('error', 'kpvzmx', 'Name already exists'); return; }
+
+            const newFolder = await this.folderManager.createFolder(result.name, parentId, result.icon);
+            this._toast('success', 'xzvkpm', 'Created');
+
+            // 自动执行批量操作到新创建的文件夹
+            if (turnIds && turnIds.length > 0) {
+                if (operationType === 'move') {
+                    await this._executeBatchMove(turnIds, newFolder.id);
+                } else if (operationType === 'copy') {
+                    await this._executeBatchCopy(turnIds, newFolder.id);
+                }
+            } else {
+                // 没有勾选项时仅刷新
+                await this.opts.onAfterAction();
+            }
+        } catch (error) {
+            console.error('[StarredTreeRenderer] Auto create + execute failed:', error);
             if (error.message) this._toast('error', '', error.message);
         }
     }
@@ -1123,7 +1252,9 @@ class StarredTreeRenderer {
                 defaultValue: currentTheme,
                 placeholder: chrome.i18n.getMessage('zmxvkp') || 'Title',
                 folderManager: this.folderManager,
-                defaultFolderId: currentFolderId || null
+                defaultFolderId: currentFolderId || null,
+                // 🔒 全部问题中的项目不允许更改文件夹
+                lockFolder: !currentFolderId
             });
             if (!result || !result.value?.trim()) return;
 
@@ -1385,7 +1516,7 @@ class StarredTreeRenderer {
      * 
      * 【用户交互流程】
      * 1. 用户点击"移动选中项"按钮
-     * 2. 显示文件夹选择菜单
+     * 2. 显示文件夹选择菜单（不包含"全部问题"，因为"全部问题"仅接受收藏新增）
      * 3. 用户选择目标文件夹
      * 4. 执行批量移动操作
      * 5. 显示结果提示
@@ -1401,14 +1532,8 @@ class StarredTreeRenderer {
         // 获取所有文件夹用于显示选择菜单
         const folders = await this.folderManager.getFolders();
 
-        // 构建文件夹选择菜单项
-        const items = [
-            {
-                label: chrome.i18n.getMessage('defaultFolder') || '未分类',
-                icon: '📁',
-                onClick: () => this._executeBatchMove(selectedTurnIds, null)
-            }
-        ];
+        // 构建文件夹选择菜单项（🔒 不包含"全部问题"，它只接受收藏新增）
+        const items = [];
 
         // 添加子文件夹选项
         for (const folder of folders) {
@@ -1418,6 +1543,17 @@ class StarredTreeRenderer {
                 onClick: () => this._executeBatchMove(selectedTurnIds, folder.id)
             });
         }
+
+        // 新增文件夹选项（创建后自动执行移动）
+        items.push({ type: 'divider' });
+        items.push({
+            label: chrome.i18n.getMessage('kxvpmz') || '新增文件夹',
+            icon: '➕',
+            onClick: () => {
+                const turnIds = [...this._selectedItems];
+                this._createFolderAndAutoExecute(null, turnIds, 'move');
+            }
+        });
 
         // 添加取消选项
         items.push({ type: 'divider' });
@@ -1440,34 +1576,51 @@ class StarredTreeRenderer {
 
     /**
      * 执行批量移动操作
+     * 【重要】来自"全部问题"的项目不允许移动，自动转为复制操作（保留在全部问题中）
      * @param {string[]} turnIds - 要移动的收藏项 ID 数组
-     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 未分类）
+     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 全部问题）
      */
     async _executeBatchMove(turnIds, targetFolderId) {
         if (turnIds.length === 0) return;
 
+        // 分离来自"全部问题"的项目（只能复制，不能移动）
+        const dfIds = this._getDefaultFolderItemIds(turnIds);
+        const moveIds = turnIds.filter(id => !dfIds.includes(id));
+
+        const folderName = targetFolderId === null
+            ? (chrome.i18n.getMessage('defaultFolder') || '全部问题')
+            : this._getFolderNameById(targetFolderId);
+
+        let totalSuccess = 0;
+        let totalFailed = 0;
+        const allErrors = [];
+
         try {
-            // 调用 folderManager 的批量移动方法
-            const result = await this.folderManager.moveStarredItemsToFolder(turnIds, targetFolderId);
-
-            // 显示结果提示
-            if (result.success > 0) {
-                const folderName = targetFolderId === null
-                    ? (chrome.i18n.getMessage('defaultFolder') || '未分类')
-                    : this._getFolderNameById(targetFolderId);
-
-                // [新功能] 2024-xx 多选移动：使用国际化消息，替换占位符
-                const msgTemplate = chrome.i18n.getMessage('batchMoveSuccess') || '已移动 $count 项到目标文件夹';
-                const message = msgTemplate.replace('$count', result.success) + `「${folderName}」`;
-                this._toast('success', '', message);
+            // "全部问题"中的项目 → 自动复制（保留在全部问题中）
+            if (dfIds.length > 0) {
+                const copyResult = await this.folderManager.copyStarredItemsToFolder(dfIds, targetFolderId);
+                totalSuccess += copyResult.success || 0;
+                totalFailed += copyResult.failed || 0;
+                if (copyResult.errors) allErrors.push(...copyResult.errors);
             }
 
-            if (result.failed > 0) {
-                console.error(`[StarredTreeRenderer] 批量移动失败 ${result.failed} 项:`, result.errors);
-                // [新功能] 2024-xx 多选移动：使用国际化消息，替换占位符
-                const msgTemplate = chrome.i18n.getMessage('batchMovePartial') || '部分移动失败（$count 项）';
-                const message = msgTemplate.replace('$count', result.failed);
-                this._toast('warning', '', message);
+            // 其他文件夹中的项目 → 正常移动
+            if (moveIds.length > 0) {
+                const moveResult = await this.folderManager.moveStarredItemsToFolder(moveIds, targetFolderId);
+                totalSuccess += moveResult.success || 0;
+                totalFailed += moveResult.failed || 0;
+                if (moveResult.errors) allErrors.push(...moveResult.errors);
+            }
+
+            // 显示结果提示
+            if (totalSuccess > 0) {
+                const actionLabel = moveIds.length > 0 ? '移动' : '复制';
+                this._toast('success', '', `已${actionLabel} ${totalSuccess} 项到「${folderName}」`);
+            }
+
+            if (totalFailed > 0) {
+                console.error(`[StarredTreeRenderer] 批量操作失败 ${totalFailed} 项:`, allErrors);
+                this._toast('warning', '', `部分操作失败（${totalFailed} 项）`);
             }
 
             // 退出多选模式并刷新
@@ -1477,6 +1630,102 @@ class StarredTreeRenderer {
         } catch (error) {
             console.error('[StarredTreeRenderer] 批量移动失败:', error);
             this._toast('error', 'batchMoveFailed', '批量移动失败');
+        }
+    }
+
+    /**
+     * 批量复制选中项到另一个文件夹（保留原位置不变）
+     * 流程与【移动】相同：弹出文件夹选择菜单 → 选择目标 → 复制
+     * 🔒 不显示"全部问题"目标（"全部问题"仅接受收藏新增，不接受复制/移动）
+     */
+    async _handleBatchCopy() {
+        const selectedTurnIds = Array.from(this._selectedItems);
+
+        if (selectedTurnIds.length === 0) {
+            this._toast('warning', '', '请先选择要复制的收藏项');
+            return;
+        }
+
+        // 获取所有文件夹用于显示选择菜单
+        const folders = await this.folderManager.getFolders();
+
+        // 构建文件夹选择菜单项（🔒 不包含"全部问题"，它只接受收藏新增）
+        const items = [];
+
+        // 添加子文件夹选项
+        for (const folder of folders) {
+            items.push({
+                label: folder.name,
+                icon: folder.icon || '📂',
+                onClick: () => this._executeBatchCopy(selectedTurnIds, folder.id)
+            });
+        }
+
+        // 新增文件夹选项（创建后自动执行复制）
+        items.push({ type: 'divider' });
+        items.push({
+            label: chrome.i18n.getMessage('kxvpmz') || '新增文件夹',
+            icon: '➕',
+            onClick: () => {
+                const turnIds = [...this._selectedItems];
+                this._createFolderAndAutoExecute(null, turnIds, 'copy');
+            }
+        });
+
+        // 添加取消选项
+        items.push({ type: 'divider' });
+        items.push({
+            label: chrome.i18n.getMessage('cancel') || '取消',
+            onClick: () => { }
+        });
+
+        // 显示文件夹选择菜单
+        const toolbar = this._batchToolbar;
+        if (toolbar) {
+            const copyBtn = toolbar.querySelector('.ait-batch-action-btn.copy');
+            window.globalDropdownManager.show({
+                trigger: copyBtn || toolbar,
+                items: items,
+                position: 'top',
+                width: 180
+            });
+        }
+    }
+
+    /**
+     * 执行批量复制操作
+     * @param {string[]} turnIds - 要复制的收藏项 ID 数组
+     * @param {string|null} targetFolderId - 目标文件夹 ID（null = 全部问题）
+     */
+    async _executeBatchCopy(turnIds, targetFolderId) {
+        if (turnIds.length === 0) return;
+
+        try {
+            // 调用 folderManager 的批量复制方法
+            const result = await this.folderManager.copyStarredItemsToFolder(turnIds, targetFolderId);
+
+            // 显示结果提示
+            if (result.success > 0) {
+                const folderName = targetFolderId === null
+                    ? (chrome.i18n.getMessage('defaultFolder') || '全部问题')
+                    : this._getFolderNameById(targetFolderId);
+
+                const message = `已复制 ${result.success} 项到「${folderName}」`;
+                this._toast('success', '', message);
+            }
+
+            if (result.failed > 0) {
+                console.error(`[StarredTreeRenderer] 批量复制失败 ${result.failed} 项:`, result.errors);
+                this._toast('warning', '', `部分复制失败（${result.failed} 项）`);
+            }
+
+            // 刷新列表（不退出多选模式，保持选中状态）
+            this._toggleMultiSelectMode(false);
+            await this.opts.onAfterAction();
+
+        } catch (error) {
+            console.error('[StarredTreeRenderer] 批量复制失败:', error);
+            this._toast('error', '', '批量复制失败');
         }
     }
 
@@ -1493,6 +1742,18 @@ class StarredTreeRenderer {
             }
         }
         return folderId;
+    }
+
+    /**
+     * 获取选中项中属于全部问题（defaultFolder, folderId === null）的 turnId 列表
+     * @param {string[]} turnIds
+     * @returns {string[]}
+     */
+    _getDefaultFolderItemIds(turnIds) {
+        return turnIds.filter(turnId => {
+            const item = this._itemDataMap.get(turnId);
+            return item && item.folderId === null;
+        });
     }
 
     // ==================== 生命周期 ====================
@@ -1699,5 +1960,34 @@ class StarredTreeRenderer {
             return { type: 'folder', folderEl, folderId: folderEl.dataset.folderId };
         }
         return null;
+    }
+
+    // ==================== 辅助：全局序号 ====================
+
+    /**
+     * 构建全量收藏项的全局序号（按 timestamp 升序，用于显示 1/2/3...）
+     * 副本项（turnId 含 _copy_）不参与序号分配，它们复用原项的编号
+     * @param {Object} tree - 树结构 { folders, uncategorized }
+     * @returns {Array<{turnId: string, timestamp: number}>}
+     */
+    _buildGlobalSequence(tree) {
+        const allItems = [];
+        const collect = (folder) => {
+            for (const item of folder.items) {
+                // 副本项不占序号
+                if (!item.turnId.includes('_copy_')) {
+                    allItems.push({ turnId: item.turnId, timestamp: item.timestamp || 0 });
+                }
+            }
+            if (folder.children) for (const child of folder.children) collect(child);
+        };
+        for (const folder of tree.folders) collect(folder);
+        for (const item of tree.uncategorized) {
+            if (!item.turnId.includes('_copy_')) {
+                allItems.push({ turnId: item.turnId, timestamp: item.timestamp || 0 });
+            }
+        }
+        allItems.sort((a, b) => a.timestamp - b.timestamp);
+        return allItems;
     }
 }
