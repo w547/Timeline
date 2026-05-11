@@ -111,6 +111,14 @@ class PromptTab extends BaseTab {
         
         // 绑定炼化按钮事件
         this.bindExtractButtonEvent();
+
+        // 监听 storage 变化，自动刷新提示词列表（支持外部写入，如文件夹炼化）
+        this.addStorageListener((changes) => {
+            if (changes.prompts) {
+                console.log('[PromptTab] 检测到提示词列表变化，自动刷新');
+                this.loadPrompts().then(() => this.renderPromptList());
+            }
+        });
     }
     
     /**

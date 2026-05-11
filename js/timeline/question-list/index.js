@@ -678,33 +678,102 @@ ${questionsText}
         return '';
     }
 
-    // ✅ 保存AI回复到提示词
+    // ✅ 解析AI炼化回复，提取完整Skill提示词和层层深入提问模板
+    _parseRefinedSections(responseText) {
+        const result = { skillPrompt: null, templates: [] };
+
+        const sections = responseText.split(/(?=###\s)/);
+
+        for (const section of sections) {
+            const trimmed = section.trim();
+
+            if (/^###\s*完整Skill提示词/i.test(trimmed)) {
+                result.skillPrompt = trimmed
+                    .replace(/^###\s*完整Skill提示词\s*\n*/i, '')
+                    .trim();
+            }
+
+            if (/^###\s*层层深入提问模板/i.test(trimmed)) {
+                const templateBody = trimmed
+                    .replace(/^###\s*层层深入提问模板\s*\n*/i, '')
+                    .trim();
+
+                const lines = templateBody.split('\n');
+                for (const line of lines) {
+                    const cleaned = line
+                        .replace(/^\d+[\.\、\)）:：]\s*/, '')
+                        .trim();
+                    const contentOnly = cleaned.replace(/^\[.+\][：:]?\s*/, '').trim();
+                    if (contentOnly.length >= 5) {
+                        result.templates.push(contentOnly);
+                    } else if (cleaned.length >= 5) {
+                        result.templates.push(cleaned);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    // ✅ 保存AI回复到提示词 — 解析完整回复并分层保存
     async _saveAIResponseToPrompts(responseText, folderName, questionCount) {
         try {
             const result = await chrome.storage.local.get('prompts');
             const prompts = result.prompts || [];
-            
-            // 生成提示词名称
+            const baseTime = Date.now();
             const timestamp = new Date().toLocaleString('zh-CN');
-            const promptName = `${folderName}_炼化结果_${timestamp}`;
-            
-            const newPrompt = {
-                id: `refined_${Date.now()}`,
-                name: promptName.substring(0, 50),
+
+            // 1. 保存完整AI回复
+            prompts.push({
+                id: `refined_${baseTime}`,
+                name: `${folderName}_炼化结果_${timestamp}`.substring(0, 50),
                 content: responseText,
                 platformId: '',
-                createdAt: Date.now(),
+                createdAt: baseTime,
                 source: 'refined',
                 sourceFolder: folderName,
-                questionCount: questionCount
-            };
-            
-            prompts.push(newPrompt);
+                questionCount
+            });
+
+            // 2. 解析并分层保存
+            const parsed = this._parseRefinedSections(responseText);
+
+            if (parsed.skillPrompt && parsed.skillPrompt.length > 20) {
+                prompts.push({
+                    id: `refined_skill_${baseTime}`,
+                    name: `${folderName}_完整Skill提示词`.substring(0, 50),
+                    content: parsed.skillPrompt,
+                    platformId: '',
+                    createdAt: baseTime + 1,
+                    source: 'refined_skill',
+                    sourceFolder: folderName,
+                    questionCount
+                });
+            }
+
+            parsed.templates.forEach((template, index) => {
+                const shortName = template.substring(0, 25);
+                prompts.push({
+                    id: `refined_tpl_${baseTime}_${index}`,
+                    name: `${folderName}_模板Q${index + 1}: ${shortName}${template.length > 25 ? '...' : ''}`.substring(0, 50),
+                    content: template,
+                    platformId: '',
+                    createdAt: baseTime + 2 + index,
+                    source: 'refined_template',
+                    sourceFolder: folderName,
+                    questionCount
+                });
+            });
+
             await chrome.storage.local.set({ prompts });
-            
-            console.log('[QuestionList] AI回复已保存到提示词:', promptName);
+
+            const templateCount = parsed.templates.length;
+            console.log('[QuestionList] AI回复已保存到提示词，共', 1 + (parsed.skillPrompt ? 1 : 0) + templateCount, '条');
             if (window.globalToastManager) {
-                window.globalToastManager.success(`AI炼化结果已保存到提示词【${promptName.substring(0, 30)}...】`);
+                window.globalToastManager.success(
+                    `"${folderName}" 炼化完成，已保存 ${templateCount} 条提问模板到提示词`
+                );
             }
         } catch (e) {
             console.error('[QuestionList] 保存AI回复到提示词失败:', e);
