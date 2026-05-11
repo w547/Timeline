@@ -79,8 +79,8 @@ class QuestionListPopup {
 
         headerRight.appendChild(settingsBtn);
 
-        header.appendChild(this._mergeBtn);
         header.appendChild(title);
+        header.appendChild(this._mergeBtn);
         header.appendChild(headerRight);
 
         // List

@@ -3824,14 +3824,19 @@ class TimelineManager {
             }
         }
 
-        // 同步显示结构化提问按钮（受开关控制，默认开启）
+        // 同步显示结构化提问按钮（受开关控制，默认开启；元宝平台不显示）
         if (this.ui.structuredQuestionsBtn) {
-            try {
-                const result = await chrome.storage.local.get('aitStructuredQuestionsEnabled');
-                const enabled = result.aitStructuredQuestionsEnabled !== false;
-                this.ui.structuredQuestionsBtn.style.display = enabled ? 'flex' : 'none';
-            } catch (e) {
-                this.ui.structuredQuestionsBtn.style.display = 'flex';
+            const isYuanbao = this.adapter?.constructor?.name === 'YuanbaoAdapter';
+            if (isYuanbao) {
+                this.ui.structuredQuestionsBtn.style.display = 'none';
+            } else {
+                try {
+                    const result = await chrome.storage.local.get('aitStructuredQuestionsEnabled');
+                    const enabled = result.aitStructuredQuestionsEnabled !== false;
+                    this.ui.structuredQuestionsBtn.style.display = enabled ? 'flex' : 'none';
+                } catch (e) {
+                    this.ui.structuredQuestionsBtn.style.display = 'flex';
+                }
             }
         }
         

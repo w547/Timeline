@@ -116,6 +116,16 @@ class StarredTreeRenderer {
         if (tree.uncategorized.length > 0) {
             this._renderDefaultFolder(tree.uncategorized, list);
         }
+
+        // ✅ 多选状态恢复：renderTree 会重建整个 DOM，
+        // 如果当前处于多选模式，需要恢复 toolbar 状态和各项的 multi-select-mode class
+        if (this._isMultiSelectMode) {
+            this._updateBatchToolbarState();
+            list.querySelectorAll('.timeline-starred-item').forEach(el => {
+                el.classList.add('multi-select-mode');
+            });
+        }
+
         const searchQuery = this.opts.showSearch ? this.opts.getSearchQuery() : '';
         if (searchQuery && list.children.length === 0) {
             list.innerHTML = `
@@ -360,6 +370,11 @@ class StarredTreeRenderer {
 
         if (this._isCurrentPage(item)) {
             el.classList.add('active');
+        }
+
+        // ✅ 多选模式下新建 DOM 时立即追加 class，避免等 renderTree 末尾批量修复才可见
+        if (this._isMultiSelectMode) {
+            el.classList.add('multi-select-mode');
         }
 
         // [新功能] 2024-xx 多选功能：添加复选框
