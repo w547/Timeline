@@ -112,12 +112,13 @@ class StarredTreeRenderer {
         // [新功能] 2024-xx 多选功能：渲染批量操作工具栏
         this._renderBatchToolbar(list);
 
-        for (const folder of tree.folders) {
-            this.renderFolder(folder, list);
-        }
-
+        // 🔒 全部问题始终置顶（先渲染）
         if (tree.uncategorized.length > 0) {
             this._renderDefaultFolder(tree.uncategorized, list);
+        }
+
+        for (const folder of tree.folders) {
+            this.renderFolder(folder, list);
         }
 
         // ✅ 多选状态恢复：renderTree 会重建整个 DOM，
@@ -158,7 +159,11 @@ class StarredTreeRenderer {
         const toolbar = document.createElement('div');
         toolbar.className = 'ait-batch-toolbar';
 
-        // 多选模式切换按钮
+        // 左侧按钮组
+        const leftGroup = document.createElement('div');
+        leftGroup.style.cssText = 'display:flex;align-items:center;gap:4px;';
+
+        // 选择模式切换按钮
         const multiSelectBtn = document.createElement('button');
         multiSelectBtn.className = 'ait-batch-toolbar-btn';
         multiSelectBtn.innerHTML = `
@@ -168,10 +173,24 @@ class StarredTreeRenderer {
                 <rect x="14" y="14" width="7" height="7"></rect>
                 <rect x="3" y="14" width="7" height="7"></rect>
             </svg>
-            <span>${chrome.i18n.getMessage('multiSelect') || '多选'}</span>
+            <span>${chrome.i18n.getMessage('multiSelect') || '选择'}</span>
         `;
         multiSelectBtn.addEventListener('click', () => this._toggleMultiSelectMode());
-        toolbar.appendChild(multiSelectBtn);
+        leftGroup.appendChild(multiSelectBtn);
+
+        // 全部收起按钮
+        const collapseAllBtn = document.createElement('button');
+        collapseAllBtn.className = 'ait-batch-toolbar-btn';
+        collapseAllBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 6 15 12 9 18"></polyline>
+            </svg>
+            <span>全部收起</span>
+        `;
+        collapseAllBtn.addEventListener('click', () => this._collapseAllFolders());
+        leftGroup.appendChild(collapseAllBtn);
+
+        toolbar.appendChild(leftGroup);
 
         // 批量操作区域（多选模式下显示）
         const batchActions = document.createElement('div');
@@ -225,6 +244,18 @@ class StarredTreeRenderer {
         `;
         copyBtn.addEventListener('click', () => this._handleBatchCopy());
         batchActions.appendChild(copyBtn);
+
+        // 取消收藏按钮
+        const unstarBtn = document.createElement('button');
+        unstarBtn.className = 'ait-batch-action-btn danger';
+        unstarBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="rgb(255, 125, 3)" stroke="rgb(255, 125, 3)" stroke-width="0.5" style="width:14px;height:14px;">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+            <span>${chrome.i18n.getMessage('bpxjkw') || '取消收藏'}</span>
+        `;
+        unstarBtn.addEventListener('click', () => this._handleBatchUnstar());
+        batchActions.appendChild(unstarBtn);
 
         // 取消按钮
         const cancelBtn = document.createElement('button');
@@ -560,15 +591,15 @@ class StarredTreeRenderer {
             const name = e.target.closest('.timeline-starred-item-name');
             if (name === hoveredName) return;
             if (hoveredName) { window.globalTooltipManager?.hide(); hoveredName = null; }
-            if (!name || name.scrollWidth <= name.clientWidth) return;
-            if (!window.globalTooltipManager) return;
+            if (!name || !window.globalTooltipManager) return;
             const itemEl = name.closest('.timeline-starred-item');
             const item = itemEl ? this._itemDataMap.get(itemEl.dataset.turnId) : null;
             if (!item) return;
             hoveredName = name;
-            const tipOpts = { placement: 'right' };
+            const tipContent = this._buildStarredTooltipElement(item);
+            const tipOpts = { placement: 'right', showDelay: 500, maxWidth: 360 };
             if (this.opts.tooltipGap !== undefined) tipOpts.gap = this.opts.tooltipGap;
-            window.globalTooltipManager.show('starred-item-name', 'button', itemEl, item.theme, tipOpts);
+            window.globalTooltipManager.show('starred-item-name', 'node', itemEl, { element: tipContent }, tipOpts);
         };
 
         const onMouseout = (e) => {
@@ -579,7 +610,7 @@ class StarredTreeRenderer {
             }
         };
 
-        // ---- 收藏项自定义拖拽（mousedown/move/up） ----
+        // ---- 自定义拖拽（mousedown/move/up） ----
         let _itemCD = null;
 
         const onItemMouseDown = (e) => {
@@ -976,9 +1007,28 @@ class StarredTreeRenderer {
 
         if (toggle) toggle.classList.toggle('expanded', expanded);
         if (content) content.classList.toggle('expanded', expanded);
-        if (icon && !icon.textContent.trim()) {
-            icon.innerHTML = expanded ? this._folderSvgOpen : this._folderSvgClosed;
+        // 切换文件夹图标：有自定义 emoji 的保持不动，默认 SVG 图标切换到对应的开关状态
+        if (icon) {
+            const hasCustomIcon = icon.textContent.trim().length > 0;
+            if (!hasCustomIcon) {
+                icon.innerHTML = expanded ? this._folderSvgOpen : this._folderSvgClosed;
+            }
+            icon.style.display = ''; // 🔒 确保图标始终可见
         }
+    }
+
+    /**
+     * 全部收起：将所有展开的文件夹折叠
+     */
+    _collapseAllFolders() {
+        const states = this.opts.getFolderStates();
+        // 将所有文件夹状态设为 false（折叠）
+        for (const key of Object.keys(states)) {
+            states[key] = false;
+        }
+        this.opts.setFolderStates(states);
+        // 重新渲染以应用折叠状态
+        this.opts.onAfterAction();
     }
 
     // ==================== 菜单 ====================
@@ -1422,10 +1472,10 @@ class StarredTreeRenderer {
         const toolbar = this._batchToolbar;
         const batchActions = this._batchActions;
 
-        // 切换工具栏按钮的显示
-        const multiSelectBtn = toolbar.querySelector('.ait-batch-toolbar-btn');
-        if (multiSelectBtn) {
-            multiSelectBtn.style.display = this._isMultiSelectMode ? 'none' : 'flex';
+        // 切换左侧按钮组的显示（选择模式下隐藏，显示批量操作栏）
+        const leftGroup = toolbar.querySelector('div');
+        if (leftGroup) {
+            leftGroup.style.display = this._isMultiSelectMode ? 'none' : 'flex';
         }
 
         // 显示/隐藏批量操作区域
@@ -1623,6 +1673,13 @@ class StarredTreeRenderer {
                 this._toast('warning', '', `部分操作失败（${totalFailed} 项）`);
             }
 
+            // 🔒 涉及「全部问题」的项目操作后，自动折叠「全部问题」
+            if (dfIds.length > 0) {
+                const states = this.opts.getFolderStates();
+                states['__default__'] = false;
+                this.opts.setFolderStates(states);
+            }
+
             // 退出多选模式并刷新
             this._toggleMultiSelectMode(false);
             await this.opts.onAfterAction();
@@ -1719,6 +1776,14 @@ class StarredTreeRenderer {
                 this._toast('warning', '', `部分复制失败（${result.failed} 项）`);
             }
 
+            // 🔒 涉及「全部问题」的项目操作后，自动折叠「全部问题」
+            const dfIds = this._getDefaultFolderItemIds(turnIds);
+            if (dfIds.length > 0) {
+                const states = this.opts.getFolderStates();
+                states['__default__'] = false;
+                this.opts.setFolderStates(states);
+            }
+
             // 刷新列表（不退出多选模式，保持选中状态）
             this._toggleMultiSelectMode(false);
             await this.opts.onAfterAction();
@@ -1754,6 +1819,80 @@ class StarredTreeRenderer {
             const item = this._itemDataMap.get(turnId);
             return item && item.folderId === null;
         });
+    }
+
+    /**
+     * 构建收藏项悬停浮窗 DOM（复用提问列表的 tooltip 样式）
+     * @param {Object} item - 收藏项数据
+     * @returns {HTMLElement}
+     */
+    _buildStarredTooltipElement(item) {
+        const container = document.createElement('div');
+        container.className = 'timeline-tooltip-container';
+
+        const contentWrap = document.createElement('div');
+        contentWrap.className = 'timeline-tooltip-content-wrap';
+
+        // 显示 URL 来源
+        if (item.url) {
+            try {
+                const urlObj = new URL(item.url);
+                const timeTag = document.createElement('span');
+                timeTag.className = 'timeline-tooltip-time';
+                timeTag.textContent = urlObj.hostname;
+                contentWrap.appendChild(timeTag);
+            } catch (e) { /* ignore invalid url */ }
+        }
+
+        // 显示完整内容
+        const content = document.createElement('div');
+        content.className = 'timeline-tooltip-content';
+        content.style.pointerEvents = 'none';
+        content.textContent = item.fullContent || item.theme || '';
+
+        contentWrap.appendChild(content);
+        container.appendChild(contentWrap);
+        return container;
+    }
+
+    /**
+     * 批量取消收藏
+     */
+    async _handleBatchUnstar() {
+        const selectedTurnIds = Array.from(this._selectedItems);
+        if (selectedTurnIds.length === 0) {
+            this._toast('warning', '', '请先选择要取消收藏的项');
+            return;
+        }
+
+        // 🔒 「全部问题」中的项目不允许取消收藏
+        const dfIds = new Set(this._getDefaultFolderItemIds(selectedTurnIds));
+        const unstarableIds = selectedTurnIds.filter(id => !dfIds.has(id));
+
+        if (unstarableIds.length === 0) {
+            this._toast('warning', '', '不能对「全部问题」中的项目执行取消收藏操作');
+            return;
+        }
+
+        let removed = 0;
+        for (const turnId of unstarableIds) {
+            try {
+                const key = `chatTimelineStar:${turnId}`;
+                await StarStorageManager.remove(key);
+                removed++;
+            } catch (err) {
+                console.error('[StarredTreeRenderer] Batch unstar failed for:', turnId, err);
+            }
+        }
+
+        if (removed > 0) {
+            this._toast('success', 'pzmvkx', `已取消收藏 ${removed} 项`);
+        }
+        if (dfIds.size > 0) {
+            this._toast('warning', '', `已跳过「全部问题」中的 ${dfIds.size} 项`);
+        }
+        this._toggleMultiSelectMode(false);
+        await this.opts.onAfterAction();
     }
 
     // ==================== 生命周期 ====================

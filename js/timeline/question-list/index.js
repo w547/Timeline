@@ -307,19 +307,13 @@ class QuestionListPopup {
             console.error('[QuestionList] 保存问题到文件夹失败:', e);
         }
 
-        // 合并问题文本
-        const mergedText = selectedMarkers.map((m, i) => `Q${i + 1}: ${m.summary || ''}`).join('\n');
-
-        // 插入到AI输入框
-        this._insertToAIInput(mergedText);
-
         // 显示成功提示
         if (window.globalToastManager) {
-            window.globalToastManager.success(`已合并 ${selectedMarkers.length} 个问题到输入框，并创建文件夹【${folderName}】`);
+            window.globalToastManager.success(`已创建文件夹【${folderName}】，包含 ${selectedMarkers.length} 个问题`);
         }
 
-        // ✅ 自动触发 开始炼化 流程（在后台执行）
-        this._triggerRefineFlow(selectedMarkers, folderName);
+        // 🔒 后续自动填充提问框、Enter、对AI提问等功能暂不实现
+        // 用户可通过输入框旁的【文件夹】按钮手动将文件夹问题发送给AI
     }
 
     // ✅ 获取下一个合并输入序号

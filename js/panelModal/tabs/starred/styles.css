@@ -242,8 +242,8 @@
 .timeline-starred-item {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: 8px 36px 8px 12px;
+    gap: 6px;
+    padding: 8px 36px 8px 2px;
     margin-bottom: 2px;
     border-radius: 18px;
     background: transparent;
@@ -627,7 +627,7 @@
 /* 文件夹内容 */
 .ait-folder-content {
     display: none;
-    padding-left: 24px;
+    padding-left: 0;
 }
 
 .ait-folder-content.expanded {

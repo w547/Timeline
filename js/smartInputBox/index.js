@@ -5,6 +5,7 @@
  * 
  * 功能：
  * - 提示词按钮（独立开关控制）
+ * - 文件夹按钮（提示词按钮下方）
  * - Enter 键换行 + 快速双击 Enter 发送（独立开关控制）
  * 
  * 支持平台：
@@ -71,6 +72,13 @@
             
             // 保存到全局（方便调试和外部控制）
             window.smartEnterManager = manager;
+
+            // 初始化文件夹按钮（在提示词按钮下方）
+            if (typeof FolderButtonManager !== 'undefined') {
+                const folderBtnManager = new FolderButtonManager();
+                await folderBtnManager.init();
+                window.folderButtonManager = folderBtnManager;
+            }
             
         } catch (error) {
             console.error('[SmartInputBox] Initialization failed:', error);

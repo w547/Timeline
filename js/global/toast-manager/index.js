@@ -252,6 +252,8 @@ class GlobalToastManager {
             transform: translateY(-10px);
             white-space: nowrap;
             max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         `;
         
         // 应用配置的颜色（根据当前主题模式）
