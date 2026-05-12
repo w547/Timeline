@@ -35,7 +35,7 @@ class QuestionListPopup {
 
     show() {
         const tm = window.timelineManager;
-        if (!tm || !tm.markers) return;
+        if (!tm || !tm.markers || tm.markers.length === 0) return;
         if (!this._wrapper || !this._timelineBar) return;
 
         this.hide();
@@ -659,18 +659,6 @@ ${questionsText}
             }
         } catch (e) {}
         
-        // 平台特定选择器（优先于通用选择器，参考 prompt-template-extractor 的 getAIMessageSelectorForCurrentSite）
-        const platformSelector = this._getAIMessageSelectorForCurrentSite();
-        if (platformSelector) {
-            const elements = document.querySelectorAll(platformSelector);
-            for (let i = elements.length - 1; i >= 0; i--) {
-                const text = (elements[i].textContent || '').trim();
-                if (text.length > 100 && !text.includes('【问题分析任务】')) {
-                    return text;
-                }
-            }
-        }
-        
         // 备选选择器
         const selectors = [
             '[data-message-author-role="assistant"]',
@@ -688,24 +676,6 @@ ${questionsText}
             }
         }
         return '';
-    }
-
-    // ✅ 平台特定 AI 消息选择器
-    _getAIMessageSelectorForCurrentSite() {
-        const hostname = location.hostname;
-        if (hostname.includes('chatgpt.com') || hostname.includes('openai.com')) return '[data-message-author-role="assistant"]';
-        if (hostname.includes('claude.ai')) return '.claude-message, [data-type="assistant"]';
-        if (hostname.includes('gemini.google') || hostname.includes('bard.google')) return '[data-type="assistant"], .gemini-message';
-        if (hostname.includes('deepseek.com')) return '[data-role="assistant"], .deepseek-message';
-        if (hostname.includes('kimi.moonshot.cn') || hostname.includes('kimi')) return '[data-role="assistant"], .message-assistant';
-        if (hostname.includes('tongyi') || hostname.includes('qwen')) return '[data-role="assistant"], .assistant-message, .chat-message-assistant';
-        if (hostname.includes('doubao') || hostname.includes('yuewen')) return '[data-role="assistant"], .assistant-message, .bot-message';
-        if (hostname.includes('yuanbao')) return '[data-role="assistant"], .agent-message, .chat-assistant';
-        if (hostname.includes('grok') || hostname.includes('x.com')) return '[data-role="assistant"], .assistant-message';
-        if (hostname.includes('perplexity')) return '[data-role="assistant"], [class*="assistant"]';
-        if (hostname.includes('yiyan') || hostname.includes('baidu')) return '[data-role="assistant"], .assistant-message';
-        if (hostname.includes('notebooklm')) return '[data-role="assistant"], .assistant-message';
-        return null;
     }
 
     // ✅ 解析AI炼化回复，提取完整Skill提示词和层层深入提问模板

@@ -160,25 +160,23 @@ class TimelineManager {
     }
 
     async init() {
-        // ✅ 立即注入UI（wrapper + 工具栏按钮），不等待元素查找
-        // 新对话中 waitForElement 最多等待 5s 超时，按钮应立即可见
+        // 注入UI（wrapper + 工具栏按钮），不等待元素查找
         this.injectTimelineUI();
-        this.setupEventListeners();
         
-        // ✅ 立即显示工具栏按钮（提问列表/闪记），不依赖 markers
+        // 根据当前 markers 状态决定显示设置按钮还是工具栏按钮
         await this.updateStarredBtnVisibility();
         
-        // 查找关键元素（新对话中最多等 OBSERVER_TIMEOUT 5s 后超时返回 null）
+        // 查找关键元素（新对话中最多等 OBSERVER_TIMEOUT 后超时返回 null）
         const elementsFound = await this.findCriticalElements();
-        
         if (!elementsFound) {
-            // 无对话容器时仅创建按钮可见，不继续执行消息相关初始化
+            // 无对话容器时仅保持按钮可见，不继续执行消息相关初始化
             return;
         }
         
         // ✅ 同步深色模式状态到 html 元素
         this.syncDarkModeClass();
         
+        this.setupEventListeners();
         this.setupObservers();
         
         // Load persisted star markers for current conversation
@@ -201,6 +199,15 @@ class TimelineManager {
             // ✅ 延迟二次计算：页面初始化后某些元素可能还没展开
             setTimeout(() => this.recalculateAndRenderMarkers(), 500);
             
+            // ✅ 等待时间轴渲染完成后，再显示收藏按钮
+            // 使用双重 requestAnimationFrame 确保浏览器完成绘制
+            requestAnimationFrame(() => {
+                requestAnimationFrame(async () => {
+                    // 此时浏览器已经完成时间轴的渲染
+                    await this.updateStarredBtnVisibility();
+                });
+            });
+            
             // ✅ 启动健康检查
             this.startHealthCheck();
         }, TIMELINE_CONFIG.INITIAL_RENDER_DELAY);
@@ -209,18 +216,10 @@ class TimelineManager {
     async findCriticalElements() {
         const selector = this.adapter.getUserMessageSelector();
         const firstTurn = await this.waitForElement(selector);
+        if (!firstTurn) return false;
         
-        if (!firstTurn) {
-            // 新开对话（无历史消息），尝试通过其他方式查找对话容器
-            this.conversationContainer = this._findConversationContainerFallback();
-            if (!this.conversationContainer) {
-                // 完全找不到：让 init() 返回 false，但 injectTimelineUI 仍会执行（wrapper/按钮创建）
-                return false;
-            }
-        } else {
-            this.conversationContainer = this.adapter.findConversationContainer(firstTurn);
-            if (!this.conversationContainer) return false;
-        }
+        this.conversationContainer = this.adapter.findConversationContainer(firstTurn);
+        if (!this.conversationContainer) return false;
 
         let parent = this.conversationContainer;
         while (parent && parent !== document.body) {
@@ -239,44 +238,6 @@ class TimelineManager {
         }
         
         return this.scrollContainer !== null;
-    }
-    
-    /**
-     * 新开对话时无消息元素，通过输入框等备选方法查找对话容器
-     */
-    _findConversationContainerFallback() {
-        // 尝试通过 adapter 的对话容器选择器直接查找
-        if (typeof this.adapter.getConversationContainerSelector === 'function') {
-            const sel = this.adapter.getConversationContainerSelector();
-            if (sel) {
-                const el = document.querySelector(sel);
-                if (el) return el;
-            }
-        }
-        // 尝试通过输入框定位（大多数 AI 平台的输入框在对话容器内）
-        try {
-            const registry = window.smartEnterAdapterRegistry;
-            if (registry) {
-                const smartAdapter = registry.getAdapter();
-                if (smartAdapter) {
-                    const inputSel = smartAdapter.getInputSelector();
-                    if (inputSel) {
-                        const input = document.querySelector(inputSel);
-                        if (input) {
-                            // 向上查找可能是对话容器的父元素
-                            let parent = input.parentElement;
-                            while (parent && parent !== document.body) {
-                                if (parent.children.length >= 2) {
-                                    return parent;
-                                }
-                                parent = parent.parentElement;
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (e) {}
-        return null;
     }
     
     injectTimelineUI() {
@@ -463,7 +424,26 @@ class TimelineManager {
             notepadBtn.classList.add('active');
         }
         this.ui.notepadBtn = notepadBtn;
-        
+
+        // 添加无问题时的设置按钮（仅当无 markers 时在右下角显示）
+        let standaloneSettingsBtn = document.querySelector('.ait-standalone-settings-btn');
+        if (!standaloneSettingsBtn) {
+            standaloneSettingsBtn = document.createElement('button');
+            standaloneSettingsBtn.className = 'ait-standalone-settings-btn';
+            standaloneSettingsBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>';
+            standaloneSettingsBtn.setAttribute('aria-label', 'Setting');
+            standaloneSettingsBtn.style.display = 'none';
+            standaloneSettingsBtn.title = '设置时间轴开关';
+            standaloneSettingsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (window.panelModal) {
+                    window.panelModal.show('timeline');
+                }
+            });
+            wrapper.appendChild(standaloneSettingsBtn);
+        }
+        this.ui.standaloneSettingsBtn = standaloneSettingsBtn;
+
         // ✅ 收藏按钮使用相对定位，不需要动态计算位置
         
         // ✅ 添加收藏整个聊天的按钮（插入到平台原生UI中）
@@ -1331,6 +1311,8 @@ class TimelineManager {
         }).catch(() => {});
         
         this.perfEnd('recalc');
+        // markers 重建后更新按钮显示状态
+        this.updateStarredBtnVisibility();
     }
     
     setupObservers() {
@@ -3320,6 +3302,9 @@ class TimelineManager {
         }
         TimelineUtils.removeElementSafe(this.ui.notepadBtn);
         
+        // ✅ 清理独立设置按钮
+        TimelineUtils.removeElementSafe(this.ui.standaloneSettingsBtn);
+        
         // ✅ 清理切换按钮
         TimelineUtils.removeElementSafe(this.ui.toggleBtn);
         
@@ -3818,43 +3803,46 @@ class TimelineManager {
         }
     }
     
-    // ✅ 更新收藏按钮显示状态
+    // ✅ 更新工具栏按钮显示状态（根据是否有问题决定显示哪组按钮）
     async updateStarredBtnVisibility() {
-        // ✅ 确保 wrapper 容器可见（新开对话时需要显示按钮）
-        if (this.ui.wrapper) {
-            this.ui.wrapper.style.display = 'flex';
-            // ✅ 移除收起状态，确保按钮可见
-            this.ui.wrapper.classList.remove('ait-collapsed');
-        }
+        const hasMarkers = this.markers && this.markers.length > 0;
         
+        // 提问列表按钮：仅当有 markers 时显示
         if (this.ui.questionListBtn) {
-            this.ui.questionListBtn.style.display = 'flex';
+            this.ui.questionListBtn.style.display = hasMarkers ? 'flex' : 'none';
         }
         
-        // 隐藏收藏按钮（功能已合并到提问列表中）
-        if (this.ui.starredBtn) {
-            this.ui.starredBtn.style.display = 'none';
-        }
-        
-        // 同步显示闪记按钮（受开关控制，默认开启）
+        // 闪记按钮：仅当有 markers 且启用时显示
         if (this.ui.notepadBtn) {
-            try {
-                const result = await chrome.storage.local.get('aitNotepadEnabled');
-                const enabled = result.aitNotepadEnabled !== false;
-                this.ui.notepadBtn.style.display = enabled ? 'flex' : 'none';
-            } catch (e) {
-                this.ui.notepadBtn.style.display = 'flex';
+            if (hasMarkers) {
+                try {
+                    const result = await chrome.storage.local.get('aitNotepadEnabled');
+                    const enabled = result.aitNotepadEnabled !== false;
+                    this.ui.notepadBtn.style.display = enabled ? 'flex' : 'none';
+                } catch (e) {
+                    this.ui.notepadBtn.style.display = 'flex';
+                }
+            } else {
+                this.ui.notepadBtn.style.display = 'none';
             }
         }
-
-        // 根据是否有收藏数据来设置不同的颜色状态
+        
+        // 收藏按钮：始终隐藏
         if (this.ui.starredBtn) {
+            this.ui.starredBtn.style.display = 'none';
+            
+            // 根据是否有收藏数据来设置不同的颜色状态
             const hasData = await this.hasStarredData();
             if (hasData) {
                 this.ui.starredBtn.classList.remove('no-starred-data');
             } else {
                 this.ui.starredBtn.classList.add('no-starred-data');
             }
+        }
+        
+        // 设置按钮：仅当没有 markers 时显示在右下角
+        if (this.ui.standaloneSettingsBtn) {
+            this.ui.standaloneSettingsBtn.style.display = hasMarkers ? 'none' : 'flex';
         }
     }
     

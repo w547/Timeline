@@ -159,6 +159,7 @@
         "js/timeline/star-input-modal/star-input-modal.js",
         "js/timeline/chat-time-recorder.js",
         "js/timeline/notepad/notepad-manager.js",
+        "js/savedAnswers/module-loader.js",
         "js/timeline/question-list/index.js",
         "js/timeline/timeline-manager.js",
         "js/timeline/index.js",
@@ -232,7 +233,13 @@
         "js/runner/languages/sql/libs/sql-wasm.wasm",
         "js/timeline/structured-questions/index.js",
         "js/timeline/structured-questions/ui.js",
-        "js/timeline/structured-questions/styles.css"
+        "js/timeline/structured-questions/styles.css",
+        "js/savedAnswers/saved-answers-manager.js",
+        "js/savedAnswers/save-answer-button.js",
+        "js/savedAnswers/saved-answers-ui.js",
+        "js/savedAnswers/template-editor.js",
+        "js/savedAnswers/saved-answers.css",
+        "js/savedAnswers/template-editor.css"
       ],
       "matches": [
         "<all_urls>"

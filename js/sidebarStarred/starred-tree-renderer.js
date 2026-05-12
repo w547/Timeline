@@ -105,12 +105,6 @@ class StarredTreeRenderer {
 
         if (tree.folders.length === 0 && tree.uncategorized.length === 0) {
             if (this.opts.scene === 'sidebar') list.style.display = 'none';
-            // 非侧边栏场景(浮窗等)，显示空状态提示
-            if (this.opts.scene !== 'sidebar') {
-                list.style.display = '';
-                this._renderBatchToolbar(list);
-                list.innerHTML += `<div class="${this.opts.emptyClass || ''}" style="padding:40px 20px;text-align:center;color:var(--ait-text-secondary,#666);">暂无收藏内容</div>`;
-            }
             return;
         }
         list.style.display = '';
@@ -1024,7 +1018,7 @@ class StarredTreeRenderer {
     }
 
     /**
-     * 全部收起：将所有展开的文件夹折叠（含「全部问题」默认文件夹）
+     * 全部收起：将所有展开的文件夹折叠
      */
     _collapseAllFolders() {
         const states = this.opts.getFolderStates();
@@ -1032,8 +1026,6 @@ class StarredTreeRenderer {
         for (const key of Object.keys(states)) {
             states[key] = false;
         }
-        // 「全部问题」默认展开（!== false 为 true），需显式设为折叠
-        states['__default__'] = false;
         this.opts.setFolderStates(states);
         // 重新渲染以应用折叠状态
         this.opts.onAfterAction();
