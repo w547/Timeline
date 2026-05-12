@@ -1,0 +1,75 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 15">
+<title>Markdown转Word文档方案</title>
+<style>
+body { font-family: 'Microsoft YaHei', SimSun, sans-serif; font-size: 11pt; line-height: 1.6; }
+h1 { font-size: 18pt; color: #333; border-bottom: 2px solid #333; padding-bottom: 5px; }
+h2 { font-size: 14pt; color: #444; margin-top: 20px; }
+h3 { font-size: 12pt; color: #555; }
+p { margin: 8px 0; }
+ul { margin: 5px 0; }
+li { margin: 3px 0; }
+code { background: #f5f5f5; padding: 2px 5px; font-family: Consolas, monospace; font-size: 10pt; }
+pre { background: #f5f5f5; padding: 10px; font-family: Consolas, monospace; font-size: 10pt; white-space: pre-wrap; }
+.highlight { background: #fff3cd; padding: 2px 5px; }
+</style>
+</head>
+<body>
+
+<h1 align="center">Markdown转Word文档方案</h1>
+
+<h2>方案一：使用 VS Code 插件（推荐）</h2>
+<ol>
+<li>在 VS Code 中安装 <strong>"Markdown PDF"</strong> 或 <strong>"docs-to-pdf-converter"</strong> 扩展</li>
+<li>打开 <code>docs/功能需求文档.md</code></li>
+<li>右键选择 "Export to Word" 或类似选项</li>
+</ol>
+<p><strong>更推荐</strong>: 安装 <strong>"Markdown to Word"</strong> (md-to-word) 或 <strong>"vscode-markdown-word"</strong> 类插件，直接导出 <code>.docx</code>。</p>
+
+<h2>方案二：使用在线工具</h2>
+<ol>
+<li>打开 <a href="https://www.md2doc.com/">https://www.md2doc.com/</a> 或 <a href="https://md2file.com/">https://md2file.com/</a></li>
+<li>将文档内容粘贴进去</li>
+<li>选择导出格式为 <code>.docx</code></li>
+<li>下载文件</li>
+</ol>
+
+<h2>方案三：使用 Python 脚本（可批量/自动化）</h2>
+<p>如果您有 Python 环境，可以使用以下脚本：</p>
+
+<pre># 需要安装: pip install python-docx
+from docx import Document
+
+def md_to_docx(md_path, output_path):
+    doc = Document()
+    with open(md_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    lines = content.split('\n')
+    for line in lines:
+        if line.startswith('# '):
+            doc.add_heading(line[2:], 0)
+        elif line.startswith('## '):
+            doc.add_heading(line[3:], 1)
+        # ... 更多处理逻辑
+    doc.save(output_path)
+
+md_to_docx('docs/功能需求文档.md', 'docs/功能需求文档.docx')</pre>
+
+<h2>方案四：使用完整Python脚本（推荐）</h2>
+<p>使用更完善的 Python 脚本，支持：</p>
+<ul>
+<li>表格渲染</li>
+<li>代码块高亮</li>
+<li>层级标题</li>
+<li>嵌套列表</li>
+</ul>
+
+<p><strong>方案四</strong> 会创建一个完整的 <code>scripts/md_to_word.py</code> 脚本，正确解析 Markdown 表格并转换为 Word 表格，保留代码块的等宽字体样式，处理嵌套列表和层级标题。</p>
+
+</body>
+</html>

@@ -1,0 +1,542 @@
+/* ============================================
+   Save Answer Button Styles
+   ============================================ */
+
+.ait-save-answer-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    color: #6b6b6b;
+    padding: 4px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.ait-save-answer-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.ait-save-answer-btn:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+    color: #333;
+}
+
+.ait-save-answer-btn--loading {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.ait-save-answer-btn--saved {
+    color: #10a37f;
+    background-color: rgba(16, 163, 127, 0.08);
+}
+
+.ait-save-answer-btn--saved:hover {
+    background-color: rgba(16, 163, 127, 0.15);
+}
+
+.ait-save-answer-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+    gap: 8px;
+}
+
+/* Dark mode */
+[data-theme="dark"] .ait-save-answer-btn,
+html[data-timeline-theme="dark"] .ait-save-answer-btn {
+    color: #8e8e93;
+}
+
+[data-theme="dark"] .ait-save-answer-btn:hover,
+html[data-timeline-theme="dark"] .ait-save-answer-btn:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #e5e5e7;
+}
+
+[data-theme="dark"] .ait-save-answer-btn--saved,
+html[data-timeline-theme="dark"] .ait-save-answer-btn--saved {
+    color: #10a37f;
+    background-color: rgba(16, 163, 127, 0.12);
+}
+
+/* ============================================
+   Saved Answers Management Page
+   ============================================ */
+
+.ait-saved-answers-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.ait-saved-answers-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.ait-saved-answers-search {
+    flex: 1;
+    min-width: 150px;
+    padding: 8px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    background: rgba(0, 0, 0, 0.02);
+    color: #1d1d1f;
+    transition: border-color 0.15s;
+}
+
+.ait-saved-answers-search:focus {
+    border-color: #7450ff;
+    background: #fff;
+}
+
+.ait-saved-answers-filter {
+    padding: 8px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    background: rgba(0, 0, 0, 0.02);
+    color: #1d1d1f;
+    cursor: pointer;
+}
+
+.ait-saved-answers-count {
+    font-size: 12px;
+    color: #86868b;
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+.ait-saved-answers-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.ait-saved-answers-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    color: #1d1d1f;
+    transition: all 0.15s;
+}
+
+.ait-saved-answers-action-btn:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.ait-saved-answers-action-btn--danger {
+    color: #ff3b30;
+    border-color: rgba(255, 59, 48, 0.2);
+}
+
+.ait-saved-answers-action-btn--danger:hover {
+    background: rgba(255, 59, 48, 0.06);
+}
+
+.ait-saved-answers-action-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* 列表 */
+.ait-saved-answers-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.ait-saved-answer-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    transition: background 0.12s;
+    align-items: flex-start;
+}
+
+.ait-saved-answer-item:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.ait-saved-answer-item--selected {
+    background: rgba(116, 80, 255, 0.04);
+}
+
+.ait-saved-answer-checkbox {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: #7450ff;
+}
+
+.ait-saved-answer-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.ait-saved-answer-question {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1d1d1f;
+    margin-bottom: 4px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ait-saved-answer-content {
+    font-size: 12px;
+    color: #86868b;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ait-saved-answer-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #aeaeb2;
+}
+
+.ait-saved-answer-platform {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 4px;
+}
+
+.ait-saved-answer-has-template {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: #7450ff;
+    font-size: 11px;
+}
+
+.ait-saved-answer-has-template svg {
+    width: 12px;
+    height: 12px;
+}
+
+.ait-saved-answer-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.ait-saved-answer-item:hover .ait-saved-answer-actions {
+    opacity: 1;
+}
+
+.ait-saved-answer-action-icon {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #86868b;
+    transition: all 0.15s;
+}
+
+.ait-saved-answer-action-icon:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #1d1d1f;
+}
+
+.ait-saved-answer-action-icon--primary:hover {
+    color: #7450ff;
+    background: rgba(116, 80, 255, 0.08);
+}
+
+.ait-saved-answer-action-icon--danger:hover {
+    color: #ff3b30;
+    background: rgba(255, 59, 48, 0.08);
+}
+
+.ait-saved-answer-action-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* 空状态 */
+.ait-saved-answers-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #aeaeb2;
+    text-align: center;
+}
+
+.ait-saved-answers-empty svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+}
+
+.ait-saved-answers-empty-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #86868b;
+    margin-bottom: 8px;
+}
+
+.ait-saved-answers-empty-desc {
+    font-size: 13px;
+    color: #aeaeb2;
+    max-width: 260px;
+    line-height: 1.5;
+}
+
+/* 分页 */
+.ait-saved-answers-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+}
+
+.ait-saved-answers-page-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #1d1d1f;
+    transition: all 0.15s;
+}
+
+.ait-saved-answers-page-btn:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.ait-saved-answers-page-btn--active {
+    background: #7450ff;
+    color: #fff;
+    border-color: #7450ff;
+}
+
+.ait-saved-answers-page-btn--active:hover {
+    background: #6030e0;
+}
+
+.ait-saved-answers-page-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Dark mode */
+html[data-timeline-theme="dark"] .ait-saved-answers-search,
+html[data-timeline-theme="dark"] .ait-saved-answers-filter {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #e5e5e7;
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-search:focus {
+    border-color: #a78bfa;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-toolbar {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answer-item {
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answer-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answer-question {
+    color: #f5f5f7;
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answer-content {
+    color: #98989d;
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-action-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #e5e5e7;
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-page-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #e5e5e7;
+}
+
+/* ============================================
+   Overlay Modal for Saved Answers Page
+   ============================================ */
+.ait-saved-answers-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.ait-saved-answers-overlay.visible {
+    opacity: 1;
+}
+
+.ait-saved-answers-modal {
+    width: min(700px, 95vw);
+    height: min(600px, 85vh);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ait-saved-answers-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+}
+
+.ait-saved-answers-modal-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1d1d1f;
+    margin: 0;
+}
+
+.ait-saved-answers-modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #86868b;
+    transition: all 0.15s;
+}
+
+.ait-saved-answers-modal-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #1d1d1f;
+}
+
+.ait-saved-answers-modal-close svg {
+    width: 16px;
+    height: 16px;
+}
+
+.ait-saved-answers-modal-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-modal {
+    background: #1c1c1e;
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-modal-header {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-modal-header h3 {
+    color: #f5f5f7;
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-modal-close {
+    color: #8e8e93;
+}
+
+html[data-timeline-theme="dark"] .ait-saved-answers-modal-close:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f5f5f7;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 600px) {
+    .ait-saved-answers-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ait-saved-answers-search {
+        width: 100%;
+    }
+
+    .ait-saved-answer-actions {
+        opacity: 1;
+    }
+
+    .ait-saved-answer-item {
+        padding: 10px 12px;
+    }
+}
