@@ -61,6 +61,11 @@ function canInitialize() {
     }
     if (!currentAdapter) return false;
     
+    // 在对话路由上（即使没有历史消息，如新开对话），也应初始化以显示工具栏按钮
+    if (currentAdapter.isConversationRoute(location.pathname)) {
+        return true;
+    }
+    
     const selector = currentAdapter.getUserMessageSelector();
     return document.querySelector(selector) !== null;
 }
@@ -281,51 +286,33 @@ if (!adapterRegistry.isSupportedSite()) {
     // ✅ 设置平台设置监听器（监听用户在设置中切换平台开关）
     setupPlatformSettingsListener();
     
-    // ✅ 修复：先检查DOM中是否已存在用户消息（SPA路由切换场景）
+    // ✅ 检查当前是否在对话路由上且应初始化
+    // 两种情况触发：1) 页面已有用户消息  2) 在对话路由上（新开对话，无历史消息）
     const checkAndInit = () => {
-        const selector = currentAdapter ? currentAdapter.getUserMessageSelector() : null;
-        if (selector && document.querySelector(selector)) {
-            if (isConversationRoute()) {
-                // Use retry mechanism for initial load as well
-                initVersion++;
-                const currentVersion = initVersion;
-                initWithRetry(currentVersion, TIMELINE_CONFIG.INIT_RETRY_DELAYS);
-            }
-            
-            attachRouteListenersOnce();
-            
-            return true; // 已初始化
+        if (!currentAdapter) {
+            currentAdapter = adapterRegistry.detectAdapter();
         }
-        return false; // 未初始化
+        if (!currentAdapter) return false;
+        
+        // 不在对话路由上，不初始化
+        if (!isConversationRoute()) return false;
+        
+        // 在对话路由上：立即初始化（不依赖是否有用户消息）
+        // 这确保新开对话时也能显示 提问列表/闪记 等工具栏按钮
+        attachRouteListenersOnce();
+        initVersion++;
+        const currentVersion = initVersion;
+        initWithRetry(currentVersion, TIMELINE_CONFIG.INIT_RETRY_DELAYS);
+        return true; // 已触发初始化
     };
     
-    // ✅ 修复：立即检查一次（处理SPA路由切换到对话页的情况）
-    // ✅ 异步检查平台是否启用
+    // ✅ 立即检查并初始化（不等待用户消息）
     (async () => {
         const platformEnabled = await isPlatformEnabled();
         if (!platformEnabled) {
             return; // 当前平台未启用，不初始化
         }
         
-        if (checkAndInit()) {
-            // 已经初始化成功，不需要observer
-        } else {
-            // 还没有用户消息，使用 DOMObserverManager 等待
-            let unsubscribeInitial = null;
-            if (window.DOMObserverManager) {
-                unsubscribeInitial = window.DOMObserverManager.getInstance().subscribeBody('timeline-initial', {
-                    callback: () => {
-                        if (checkAndInit()) {
-                            // 初始化成功，取消订阅
-                            if (unsubscribeInitial) {
-                                unsubscribeInitial();
-                                unsubscribeInitial = null;
-                            }
-                        }
-                    },
-                    debounce: 150  // 150ms 防抖
-                });
-            }
-        }
+        checkAndInit();
     })();
 }

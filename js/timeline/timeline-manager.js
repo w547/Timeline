@@ -160,14 +160,25 @@ class TimelineManager {
     }
 
     async init() {
+        // ✅ 立即注入UI（wrapper + 工具栏按钮），不等待元素查找
+        // 新对话中 waitForElement 最多等待 5s 超时，按钮应立即可见
+        this.injectTimelineUI();
+        this.setupEventListeners();
+        
+        // ✅ 立即显示工具栏按钮（提问列表/闪记），不依赖 markers
+        await this.updateStarredBtnVisibility();
+        
+        // 查找关键元素（新对话中最多等 OBSERVER_TIMEOUT 5s 后超时返回 null）
         const elementsFound = await this.findCriticalElements();
-        if (!elementsFound) return;
+        
+        if (!elementsFound) {
+            // 无对话容器时仅创建按钮可见，不继续执行消息相关初始化
+            return;
+        }
         
         // ✅ 同步深色模式状态到 html 元素
         this.syncDarkModeClass();
         
-        this.injectTimelineUI();
-        this.setupEventListeners();
         this.setupObservers();
         
         // Load persisted star markers for current conversation
@@ -190,15 +201,6 @@ class TimelineManager {
             // ✅ 延迟二次计算：页面初始化后某些元素可能还没展开
             setTimeout(() => this.recalculateAndRenderMarkers(), 500);
             
-            // ✅ 等待时间轴渲染完成后，再显示收藏按钮
-            // 使用双重 requestAnimationFrame 确保浏览器完成绘制
-            requestAnimationFrame(() => {
-                requestAnimationFrame(async () => {
-                    // 此时浏览器已经完成时间轴的渲染
-                    await this.updateStarredBtnVisibility();
-                });
-            });
-            
             // ✅ 启动健康检查
             this.startHealthCheck();
         }, TIMELINE_CONFIG.INITIAL_RENDER_DELAY);
@@ -207,10 +209,18 @@ class TimelineManager {
     async findCriticalElements() {
         const selector = this.adapter.getUserMessageSelector();
         const firstTurn = await this.waitForElement(selector);
-        if (!firstTurn) return false;
         
-        this.conversationContainer = this.adapter.findConversationContainer(firstTurn);
-        if (!this.conversationContainer) return false;
+        if (!firstTurn) {
+            // 新开对话（无历史消息），尝试通过其他方式查找对话容器
+            this.conversationContainer = this._findConversationContainerFallback();
+            if (!this.conversationContainer) {
+                // 完全找不到：让 init() 返回 false，但 injectTimelineUI 仍会执行（wrapper/按钮创建）
+                return false;
+            }
+        } else {
+            this.conversationContainer = this.adapter.findConversationContainer(firstTurn);
+            if (!this.conversationContainer) return false;
+        }
 
         let parent = this.conversationContainer;
         while (parent && parent !== document.body) {
@@ -229,6 +239,44 @@ class TimelineManager {
         }
         
         return this.scrollContainer !== null;
+    }
+    
+    /**
+     * 新开对话时无消息元素，通过输入框等备选方法查找对话容器
+     */
+    _findConversationContainerFallback() {
+        // 尝试通过 adapter 的对话容器选择器直接查找
+        if (typeof this.adapter.getConversationContainerSelector === 'function') {
+            const sel = this.adapter.getConversationContainerSelector();
+            if (sel) {
+                const el = document.querySelector(sel);
+                if (el) return el;
+            }
+        }
+        // 尝试通过输入框定位（大多数 AI 平台的输入框在对话容器内）
+        try {
+            const registry = window.smartEnterAdapterRegistry;
+            if (registry) {
+                const smartAdapter = registry.getAdapter();
+                if (smartAdapter) {
+                    const inputSel = smartAdapter.getInputSelector();
+                    if (inputSel) {
+                        const input = document.querySelector(inputSel);
+                        if (input) {
+                            // 向上查找可能是对话容器的父元素
+                            let parent = input.parentElement;
+                            while (parent && parent !== document.body) {
+                                if (parent.children.length >= 2) {
+                                    return parent;
+                                }
+                                parent = parent.parentElement;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
+        return null;
     }
     
     injectTimelineUI() {
@@ -415,39 +463,6 @@ class TimelineManager {
             notepadBtn.classList.add('active');
         }
         this.ui.notepadBtn = notepadBtn;
-
-        // ✅ 添加结构化提问按钮（在闪记按钮下方）
-        let structuredQuestionsBtn = document.querySelector('.ait-structured-questions-btn');
-        if (!structuredQuestionsBtn) {
-            structuredQuestionsBtn = document.createElement('button');
-            structuredQuestionsBtn.className = 'ait-structured-questions-btn';
-            structuredQuestionsBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
-            structuredQuestionsBtn.setAttribute('aria-label', 'Structured Questions');
-            structuredQuestionsBtn.style.display = 'none';
-            
-            structuredQuestionsBtn.addEventListener('mouseenter', () => {
-                window.globalTooltipManager.show(
-                    'structured-questions-btn',
-                    'button',
-                    structuredQuestionsBtn,
-                    '结构化提问思路提炼',
-                    { placement: 'left' }
-                );
-            });
-            
-            structuredQuestionsBtn.addEventListener('mouseleave', () => {
-                window.globalTooltipManager.hide();
-            });
-
-            structuredQuestionsBtn.addEventListener('click', () => {
-                if (window.structuredQuestionsUI) {
-                    window.structuredQuestionsUI.toggle();
-                }
-            });
-            
-            wrapper.appendChild(structuredQuestionsBtn);
-        }
-        this.ui.structuredQuestionsBtn = structuredQuestionsBtn;
         
         // ✅ 收藏按钮使用相对定位，不需要动态计算位置
         
@@ -3805,13 +3820,21 @@ class TimelineManager {
     
     // ✅ 更新收藏按钮显示状态
     async updateStarredBtnVisibility() {
+        // ✅ 确保 wrapper 容器可见（新开对话时需要显示按钮）
+        if (this.ui.wrapper) {
+            this.ui.wrapper.style.display = 'flex';
+            // ✅ 移除收起状态，确保按钮可见
+            this.ui.wrapper.classList.remove('ait-collapsed');
+        }
+        
         if (this.ui.questionListBtn) {
             this.ui.questionListBtn.style.display = 'flex';
         }
-        if (!this.ui.starredBtn) return;
         
         // 隐藏收藏按钮（功能已合并到提问列表中）
-        this.ui.starredBtn.style.display = 'none';
+        if (this.ui.starredBtn) {
+            this.ui.starredBtn.style.display = 'none';
+        }
         
         // 同步显示闪记按钮（受开关控制，默认开启）
         if (this.ui.notepadBtn) {
@@ -3824,30 +3847,14 @@ class TimelineManager {
             }
         }
 
-        // 同步显示结构化提问按钮（受开关控制，默认开启；元宝平台不显示）
-        if (this.ui.structuredQuestionsBtn) {
-            const isYuanbao = this.adapter?.constructor?.name === 'YuanbaoAdapter';
-            if (isYuanbao) {
-                this.ui.structuredQuestionsBtn.style.display = 'none';
-            } else {
-                try {
-                    const result = await chrome.storage.local.get('aitStructuredQuestionsEnabled');
-                    const enabled = result.aitStructuredQuestionsEnabled !== false;
-                    this.ui.structuredQuestionsBtn.style.display = enabled ? 'flex' : 'none';
-                } catch (e) {
-                    this.ui.structuredQuestionsBtn.style.display = 'flex';
-                }
-            }
-        }
-        
         // 根据是否有收藏数据来设置不同的颜色状态
-        const hasData = await this.hasStarredData();
-        if (hasData) {
-            // 有收藏记录：移除灰色类，使用橙色
-            this.ui.starredBtn.classList.remove('no-starred-data');
-        } else {
-            // 没有收藏记录：添加灰色类
-            this.ui.starredBtn.classList.add('no-starred-data');
+        if (this.ui.starredBtn) {
+            const hasData = await this.hasStarredData();
+            if (hasData) {
+                this.ui.starredBtn.classList.remove('no-starred-data');
+            } else {
+                this.ui.starredBtn.classList.add('no-starred-data');
+            }
         }
     }
     
