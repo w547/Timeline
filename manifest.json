@@ -162,6 +162,7 @@
         "js/timeline/notepad/notepad-manager.js",
         "js/savedAnswers/module-loader.js",
         "js/timeline/question-list/index.js",
+        "js/timeline/question-dots-panel/index.js",
         "js/timeline/timeline-manager.js",
         "js/timeline/index.js",
         "js/sidebarStarred/sidebar-starred-manager.js",

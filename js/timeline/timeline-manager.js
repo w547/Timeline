@@ -363,6 +363,11 @@ class TimelineManager {
             window.questionListPopup.bind(wrapper, timelineBar);
         }
 
+        // ✅ 绑定悬浮圆点面板到 wrapper
+        if (window.questionDotsPanel) {
+            window.questionDotsPanel.bind(wrapper, timelineBar);
+        }
+
         // ✅ 添加收藏按钮（在 timeline-bar 下方 10px 处，垂直居中对齐）
         let starredBtn = document.querySelector('.timeline-starred-btn');
         if (!starredBtn) {
@@ -903,6 +908,7 @@ class TimelineManager {
         if (!this.conversationContainer || !this.ui.timelineBar || !this.scrollContainer) return;
 
         if (window.questionListPopup) window.questionListPopup.onMarkersRebuilt();
+        if (window.questionDotsPanel) window.questionDotsPanel.onMarkersRebuilt();
 
         const selector = this.adapter.getUserMessageSelector();
         let userTurnElements = this.conversationContainer.querySelectorAll(selector);
@@ -2649,79 +2655,99 @@ class TimelineManager {
     updateVirtualRangeAndRender() {
         const localVersion = this.markersVersion;
         if (!this.ui.track || !this.ui.trackContent || this.markers.length === 0) return;
-        const st = this.ui.track.scrollTop || 0;
-        const vh = this.ui.track.clientHeight || 0;
-        const buffer = Math.max(TIMELINE_CONFIG.VIRTUAL_BUFFER_MIN, vh);
-        const minY = st - buffer;
-        const maxY = st + vh + buffer;
-        const start = this.lowerBound(this.yPositions, minY);
-        const end = Math.max(start - 1, this.upperBound(this.yPositions, maxY));
 
-        let prevStart = this.visibleRange.start;
-        let prevEnd = this.visibleRange.end;
-        const len = this.markers.length;
-        // Clamp previous indices into current bounds to avoid undefined access
-        if (len > 0) {
-            prevStart = Math.max(0, Math.min(prevStart, len - 1));
-            prevEnd = Math.max(-1, Math.min(prevEnd, len - 1));
-        }
-        if (prevEnd >= prevStart) {
-            for (let i = prevStart; i < Math.min(start, prevEnd + 1); i++) {
-                const m = this.markers[i];
-                if (m && m.dotElement) { try { m.dotElement.remove(); } catch {} m.dotElement = null; }
-            }
-            for (let i = Math.max(end + 1, prevStart); i <= prevEnd; i++) {
-                const m = this.markers[i];
-                if (m && m.dotElement) { try { m.dotElement.remove(); } catch {} m.dotElement = null; }
-            }
-        } else {
-            (this.ui.trackContent || this.ui.timelineBar).querySelectorAll('.ait-timeline-dot').forEach(n => n.remove());
-            this.markers.forEach(m => { m.dotElement = null; });
-        }
+        const totalCount = this.markers.length;
+        const useVirtualRendering = totalCount > 150;
 
-        const frag = document.createDocumentFragment();
-        for (let i = start; i <= end; i++) {
-            const marker = this.markers[i];
-            if (!marker) continue;
-            if (!marker.dotElement) {
-                const dot = document.createElement('button');
-                dot.className = 'ait-timeline-dot';
-                dot.dataset.targetTurnId = marker.id;
-                dot.setAttribute('aria-label', marker.summary);
-                dot.setAttribute('tabindex', '0');
-                try { dot.setAttribute('aria-describedby', 'chat-timeline-tooltip'); } catch {}
-                try { dot.style.setProperty('--n', String(marker.dotN || 0)); } catch {}
-                if (this.usePixelTop) {
-                    dot.style.top = `${Math.round(this.yPositions[i])}px`;
+        const start = 0;
+        const end = totalCount - 1;
+
+        if (useVirtualRendering) {
+            const st = this.ui.track.scrollTop || 0;
+            const vh = this.ui.track.clientHeight || 0;
+            const buffer = Math.max(TIMELINE_CONFIG.VIRTUAL_BUFFER_MIN, vh);
+            const minY = st - buffer;
+            const maxY = st + vh + buffer;
+            const virtStart = this.lowerBound(this.yPositions, minY);
+            const virtEnd = Math.max(virtStart - 1, this.upperBound(this.yPositions, maxY));
+
+            let prevStart = this.visibleRange.start;
+            let prevEnd = this.visibleRange.end;
+            const len = this.markers.length;
+            if (len > 0) {
+                prevStart = Math.max(0, Math.min(prevStart, len - 1));
+                prevEnd = Math.max(-1, Math.min(prevEnd, len - 1));
+            }
+            if (prevEnd >= prevStart) {
+                for (let i = prevStart; i < Math.min(virtStart, prevEnd + 1); i++) {
+                    const m = this.markers[i];
+                    if (m && m.dotElement) { try { m.dotElement.remove(); } catch {} m.dotElement = null; }
                 }
-                // Apply active state immediately if this is the active marker
-                try { dot.classList.toggle('active', marker.id === this.activeTurnId); } catch {}
-                // ✅ 添加：如果已收藏，添加 starred 类（标记点变橙金色）
-                try { dot.classList.toggle('starred', this.starred.has(marker.id)); } catch {}
-                // ✅ 添加：如果已标记，添加 pinned 类（CSS自动显示图钉）
-                try { 
-                    dot.classList.toggle('pinned', this.pinned.has(marker.id));
-                } catch {}
-                // ✅ 添加：奇偶标识（用于紧凑模式长短交替）
-                try { dot.classList.add(i % 2 === 0 ? 'line-even' : 'line-odd'); } catch {}
+                for (let i = Math.max(virtEnd + 1, prevStart); i <= prevEnd; i++) {
+                    const m = this.markers[i];
+                    if (m && m.dotElement) { try { m.dotElement.remove(); } catch {} m.dotElement = null; }
+                }
+            } else {
+                (this.ui.trackContent || this.ui.timelineBar).querySelectorAll('.ait-timeline-dot').forEach(n => n.remove());
+                this.markers.forEach(m => { m.dotElement = null; });
+            }
+
+            const frag = document.createDocumentFragment();
+            for (let i = virtStart; i <= virtEnd; i++) {
+                const marker = this.markers[i];
+                if (!marker) continue;
+                if (!marker.dotElement) {
+                    const dot = this._createDotElement(marker, i);
+                    marker.dotElement = dot;
+                    frag.appendChild(dot);
+                } else {
+                    try { marker.dotElement.style.setProperty('--n', String(marker.dotN || 0)); } catch {}
+                    if (this.usePixelTop) {
+                        marker.dotElement.style.top = `${Math.round(this.yPositions[i])}px`;
+                    }
+                }
+            }
+            if (localVersion !== this.markersVersion) return;
+            if (frag.childNodes.length) this.ui.trackContent.appendChild(frag);
+            this.visibleRange = { start: virtStart, end: virtEnd };
+        } else {
+            (this.ui.trackContent || this.ui.timelineBar).querySelectorAll('.ait-timeline-dot').forEach(n => { try { n.remove(); } catch {} });
+            this.markers.forEach(m => { m.dotElement = null; });
+
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < totalCount; i++) {
+                const marker = this.markers[i];
+                if (!marker) continue;
+                const dot = this._createDotElement(marker, i);
                 marker.dotElement = dot;
                 frag.appendChild(dot);
-            } else {
-                try { marker.dotElement.style.setProperty('--n', String(marker.dotN || 0)); } catch {}
-                if (this.usePixelTop) {
-                    marker.dotElement.style.top = `${Math.round(this.yPositions[i])}px`;
-                }
-                // ✅ 移除：不再更新圆点的 starred 类
             }
+            if (localVersion !== this.markersVersion) return;
+            if (frag.childNodes.length) this.ui.trackContent.appendChild(frag);
+            this.visibleRange = { start: 0, end: totalCount - 1 };
         }
-        if (localVersion !== this.markersVersion) return; // stale pass, abort
-        if (frag.childNodes.length) this.ui.trackContent.appendChild(frag);
-        this.visibleRange = { start, end };
-        
-        // ✅ 节点渲染完成后，重新渲染图钉
+
         requestAnimationFrame(() => {
             this.renderPinMarkers();
         });
+    }
+
+    _createDotElement(marker, i) {
+        const dot = document.createElement('button');
+        dot.className = 'ait-timeline-dot';
+        dot.dataset.targetTurnId = marker.id;
+        dot.setAttribute('aria-label', marker.summary);
+        dot.setAttribute('tabindex', '0');
+        try { dot.setAttribute('aria-describedby', 'chat-timeline-tooltip'); } catch {}
+        try { dot.style.setProperty('--n', String(marker.dotN || 0)); } catch {}
+        if (this.usePixelTop) {
+            dot.style.top = `${Math.round(this.yPositions[i])}px`;
+        }
+        try { dot.classList.toggle('active', marker.id === this.activeTurnId); } catch {}
+        try { dot.classList.toggle('starred', this.starred.has(marker.id)); } catch {}
+        try { dot.classList.toggle('pinned', this.pinned.has(marker.id)); } catch {}
+        try { dot.classList.add(i % 2 === 0 ? 'line-even' : 'line-odd'); } catch {}
+        return dot;
     }
 
     lowerBound(arr, x) {
