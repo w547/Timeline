@@ -176,14 +176,9 @@ function initializeTimeline() {
             });
         }
 
-        // Initialize Saved Answers system (manual save + template extraction)
+        // Initialize Saved Answers system (management UI + template editor)
         if (window.SavedAnswersModuleLoader) {
-            window.SavedAnswersModuleLoader.load().then(() => {
-                // 延迟启动按钮注入，等AI回答渲染完成
-                setTimeout(() => {
-                    window.SavedAnswersModuleLoader.startButtonInjector();
-                }, 3000);
-            });
+            window.SavedAnswersModuleLoader.load();
         }
     } catch (err) {
     }
@@ -201,11 +196,6 @@ async function handleUrlChange() {
     // URL 变化确认，立即隐藏提问列表
     if (window.questionListPopup && window.questionListPopup.visible) {
         window.questionListPopup.hide();
-    }
-
-    // 停止保存按钮注入
-    if (window.SavedAnswersModuleLoader) {
-        window.SavedAnswersModuleLoader.stopButtonInjector();
     }
 
     currentUrl = location.href;

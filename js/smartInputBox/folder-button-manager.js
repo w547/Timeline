@@ -549,32 +549,33 @@ class FolderButtonManager {
         // 构建炼化 prompt
         const questionsText = questions.map((q, i) => `${i + 1}. ${q}`).join('\n');
         const refinedPrompt = `【问题分析任务】
-
-请AI分析并整理以下所有问题，重点关注问题间的关联逻辑、提问技巧及对模糊领域的处理方式。
+        
+请AI分析并整理以下所有问题，提炼出核心项目主题并生成层层深入的提问模板。
 
 ## 原始问题列表
 ${questionsText}
 
-## 分析要求
-1. **关联分析**：找出各问题之间的逻辑关联、递进关系、互补关系
-2. **提问技巧**：分析提问者的提问策略和技巧
-3. **模糊领域处理**：识别并分析对模糊、不确定领域的提问方式
+## 输出格式要求（必须严格遵守）
 
-## 输出要求
-1. 输出一份**完整的Skill提示词**，可作为该研究领域的系统指令
-2. 生成**3-5个层层深入的提问模板语句**（从基础认知到深层探索）
+回答第一句话必须严格使用以下格式：
+"XX项目提问模板如下:XX"
+（其中第一个XX用提炼出的项目名称替换，第二个XX用简短描述替换）
 
-请按照以下格式输出：
+然后直接列出3-5个层层深入的提问模板语句，每个一句话，格式如下：
 
-### 完整Skill提示词
-[系统指令内容]
+1. [第一层：基础认知提问 - 具体模板语句]
+2. [第二层：深入理解提问 - 具体模板语句]
+3. [第三层：关联延伸提问 - 具体模板语句]
+4. [第四层：批判反思提问 - 具体模板语句]
+5. [第五层：创新应用提问 - 具体模板语句]
 
-### 层层深入提问模板
-1. [第一层：基础认知提问]
-2. [第二层：深入理解提问]
-3. [第三层：关联延伸提问]
-4. [第四层：批判反思提问]
-5. [第五层：创新应用提问]`;
+注意：
+- 不要输出"完整Skill提示词"章节
+- 不要输出分析过程或客套话
+- 直接给出提炼后的项目名称和模板列表
+- 模板要简洁实用，每个模板一句完整可用的提问语句
+- 回答内容必须可直接复制作为提问模板使用`;
+
 
         // 找到输入框
         const inputElement = this._findInputElement();
@@ -739,9 +740,9 @@ ${questionsText}
             lastLength = currentLength;
 
             const hasCompleteMarkers = currentResponse && (
-                currentResponse.includes('完整Skill提示词') ||
-                currentResponse.includes('层层深入') ||
-                currentResponse.includes('提问框架')
+                currentResponse.includes('提问模板如下') ||
+                currentResponse.includes('基础认知提问') ||
+                currentResponse.includes('创新应用提问')
             );
 
             const isStable = stableCount >= 3 && currentLength > 500;
@@ -887,47 +888,55 @@ ${questionsText}
     }
 
     /**
-     * 解析AI炼化回复，提取完整Skill提示词和层层深入提问模板
+     * 解析AI炼化回复，提取项目名称和层层深入提问模板
+     * 新格式：首行 "XX项目提问模板如下:XX"，后续为编号模板列表
      * @param {string} responseText - AI完整回复
-     * @returns {{ skillPrompt: string|null, templates: string[] }}
+     * @returns {{ projectName: string|null, skillPrompt: string|null, templates: string[] }}
      */
     _parseRefinedSections(responseText) {
-        const result = { skillPrompt: null, templates: [] };
+        const result = { projectName: null, skillPrompt: null, templates: [] };
 
-        // 按 ### 分隔符切分各段落
-        const sections = responseText.split(/(?=###\s)/);
+        const lines = responseText.split('\n');
+        let foundTemplateSection = false;
 
-        for (const section of sections) {
-            const trimmed = section.trim();
+        // 提取首行项目名称
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
 
-            // 提取完整Skill提示词
+            // 匹配 "XX项目提问模板如下:XX" 格式
+            const projectMatch = trimmed.match(/(.+?)提问模板如下[：:]\s*(.+)/);
+            if (projectMatch) {
+                result.projectName = projectMatch[1].trim();
+                result.skillPrompt = trimmed; // 首行作为 skillPrompt
+                foundTemplateSection = true;
+                continue;
+            }
+
+            // 匹配旧的 ### 格式（向后兼容）
             if (/^###\s*完整Skill提示词/i.test(trimmed)) {
                 result.skillPrompt = trimmed
                     .replace(/^###\s*完整Skill提示词\s*\n*/i, '')
                     .trim();
+                continue;
+            }
+            if (/^###\s*层层深入提问模板/i.test(trimmed)) {
+                foundTemplateSection = true;
+                continue;
             }
 
-            // 提取层层深入提问模板
-            if (/^###\s*层层深入提问模板/i.test(trimmed)) {
-                const templateBody = trimmed
-                    .replace(/^###\s*层层深入提问模板\s*\n*/i, '')
+            // 提取带编号的模板语句
+            if (foundTemplateSection) {
+                // 匹配 "1. xxx" 或 "1、xxx" 等格式
+                const cleaned = trimmed
+                    .replace(/^\d+[\.\、\)）:：]\s*/, '')
                     .trim();
-
-                // 按行解析，提取带编号的模板语句
-                const lines = templateBody.split('\n');
-                for (const line of lines) {
-                    // 去除编号：1. 1、1) 1）1: 等
-                    const cleaned = line
-                        .replace(/^\d+[\.\、\)）:：]\s*/, '')
-                        .trim();
-                    // 过滤掉层级标签（如 [第一层：...]）
-                    const contentOnly = cleaned.replace(/^\[.+\][：:]?\s*/, '').trim();
-                    if (contentOnly.length >= 5) {
-                        result.templates.push(contentOnly);
-                    } else if (cleaned.length >= 5) {
-                        // 如果去掉层级标签后太短，保留原始内容
-                        result.templates.push(cleaned);
-                    }
+                // 去除层级标签（如 [第一层：...]）
+                const contentOnly = cleaned.replace(/^\[.+\][：:]?\s*/, '').trim();
+                if (contentOnly.length >= 5) {
+                    result.templates.push(contentOnly);
+                } else if (cleaned.length >= 5) {
+                    result.templates.push(cleaned);
                 }
             }
         }
@@ -943,15 +952,20 @@ ${questionsText}
             const result = await chrome.storage.local.get('prompts');
             const prompts = result.prompts || [];
             const baseTime = Date.now();
-            const timestamp = new Date().toLocaleString('zh-CN');
 
             console.log(`[FolderButton] _saveAIResponseToPrompts: 回复长度=${responseText?.length || 0}, 文件夹=${folderName}, 问题数=${questionCount}`);
             console.log(`[FolderButton] 已存储提示词数量: ${prompts.length}`);
 
-            // ========== 1. 保存完整AI回复（保持向后兼容） ==========
+            // ========== 解析 ==========
+            const parsed = this._parseRefinedSections(responseText);
+            const effectiveProjectName = parsed.projectName || folderName;
+
+            console.log(`[FolderButton] 解析结果: projectName=${effectiveProjectName}, skillPrompt=${parsed.skillPrompt ? parsed.skillPrompt.length + '字' : '无'}, templates=${parsed.templates.length}条`);
+
+            // ========== 1. 保存完整AI回复 ==========
             prompts.push({
                 id: `refined_${baseTime}`,
-                name: `${folderName}_炼化结果_${timestamp}`.substring(0, 50),
+                name: `${effectiveProjectName}_炼化结果`.substring(0, 50),
                 content: responseText,
                 platformId: '',
                 createdAt: baseTime,
@@ -960,16 +974,11 @@ ${questionsText}
                 questionCount
             });
 
-            // ========== 2. 解析并分层保存 ==========
-            const parsed = this._parseRefinedSections(responseText);
-
-            console.log(`[FolderButton] 解析结果: skillPrompt=${parsed.skillPrompt ? parsed.skillPrompt.length + '字' : '无'}, templates=${parsed.templates.length}条`);
-
-            // 2a. 保存完整Skill提示词
-            if (parsed.skillPrompt && parsed.skillPrompt.length > 20) {
+            // ========== 2. 保存项目总览行 ==========
+            if (parsed.skillPrompt && parsed.skillPrompt.length > 10) {
                 prompts.push({
                     id: `refined_skill_${baseTime}`,
-                    name: `${folderName}_完整Skill提示词`.substring(0, 50),
+                    name: `${effectiveProjectName}提问模板`.substring(0, 50),
                     content: parsed.skillPrompt,
                     platformId: '',
                     createdAt: baseTime + 1,
@@ -979,12 +988,12 @@ ${questionsText}
                 });
             }
 
-            // 2b. 保存每个层层深入提问模板语句
+            // ========== 3. 保存每个提问模板语句 ==========
             parsed.templates.forEach((template, index) => {
                 const shortName = template.substring(0, 25);
                 prompts.push({
                     id: `refined_tpl_${baseTime}_${index}`,
-                    name: `${folderName}_模板Q${index + 1}: ${shortName}${template.length > 25 ? '...' : ''}`.substring(0, 50),
+                    name: `${effectiveProjectName}_Q${index + 1}: ${shortName}${template.length > 25 ? '...' : ''}`.substring(0, 50),
                     content: template,
                     platformId: '',
                     createdAt: baseTime + 2 + index,
@@ -1001,7 +1010,7 @@ ${questionsText}
             const totalSaved = 1 + (parsed.skillPrompt ? 1 : 0) + templateCount;
             if (window.globalToastManager) {
                 window.globalToastManager.success(
-                    `"${folderName}" 炼化完成，已保存 ${totalSaved} 条提示词（含 ${templateCount} 条提问模板）`
+                    `"${effectiveProjectName}" 炼化完成，已保存 ${totalSaved} 条提示词（含 ${templateCount} 条提问模板）`
                 );
             }
         } catch (e) {

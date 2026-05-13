@@ -79,6 +79,13 @@
                 await folderBtnManager.init();
                 window.folderButtonManager = folderBtnManager;
             }
+
+            // 初始化保存回答按钮（在文件夹按钮下方）
+            if (typeof SaveAnswerButtonManager !== 'undefined') {
+                const saveAnswerBtnManager = new SaveAnswerButtonManager();
+                await saveAnswerBtnManager.init();
+                window.saveAnswerButtonManager = saveAnswerBtnManager;
+            }
             
         } catch (error) {
             console.error('[SmartInputBox] Initialization failed:', error);

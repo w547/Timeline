@@ -536,31 +536,32 @@ class PromptTab extends BaseTab {
         
         const refinedPrompt = `【问题分析任务】
         
-请AI分析并整理以下所有问题，重点关注问题间的关联逻辑、提问技巧及对模糊领域的处理方式。
+请AI分析并整理以下所有问题，提炼出核心项目主题并生成层层深入的提问模板。
 
 ## 原始问题列表
 ${questionsText}
 
-## 分析要求
-1. **关联分析**：找出各问题之间的逻辑关联、递进关系、互补关系
-2. **提问技巧**：分析提问者的提问策略和技巧
-3. **模糊领域处理**：识别并分析对模糊、不确定领域的提问方式
+## 输出格式要求（必须严格遵守）
 
-## 输出要求
-1. 输出一份**完整的Skill提示词**，可作为该研究领域的系统指令
-2. 生成**3-5个层层深入的提问模板语句**（从基础认知到深层探索）
+回答第一句话必须严格使用以下格式：
+"XX项目提问模板如下:XX"
+（其中第一个XX用提炼出的项目名称替换，第二个XX用简短描述替换）
 
-请按照以下格式输出：
+然后直接列出3-5个层层深入的提问模板语句，每个一句话，格式如下：
 
-### 完整Skill提示词
-[系统指令内容]
+1. [第一层：基础认知提问 - 具体模板语句]
+2. [第二层：深入理解提问 - 具体模板语句]
+3. [第三层：关联延伸提问 - 具体模板语句]
+4. [第四层：批判反思提问 - 具体模板语句]
+5. [第五层：创新应用提问 - 具体模板语句]
 
-### 层层深入提问模板
-1. [第一层：基础认知提问]
-2. [第二层：深入理解提问]
-3. [第三层：关联延伸提问]
-4. [第四层：批判反思提问]
-5. [第五层：创新应用提问]`;
+注意：
+- 不要输出"完整Skill提示词"章节
+- 不要输出分析过程或客套话
+- 直接给出提炼后的项目名称和模板列表
+- 模板要简洁实用，每个模板一句完整可用的提问语句
+- 回答内容必须可直接复制作为提问模板使用`;
+
 
         if (window.globalToastManager) {
             window.globalToastManager.info('正在创建新对话并发送炼化提示词...');
@@ -774,9 +775,9 @@ ${questionsText}
 
                 // 判断是否完成
                 const hasCompleteMarkers = currentResponse && (
-                    currentResponse.includes('完整Skill提示词') ||
-                    currentResponse.includes('层层深入') ||
-                    currentResponse.includes('提问框架')
+                    currentResponse.includes('提问模板如下') ||
+                    currentResponse.includes('基础认知提问') ||
+                    currentResponse.includes('创新应用提问')
                 );
 
                 const isStable = stableCount >= 3 && currentLength > 500;
@@ -811,7 +812,7 @@ ${questionsText}
                     if (elements.length > 0) {
                         for (let i = elements.length - 1; i >= 0; i--) {
                             const text = (elements[i].textContent || '').trim();
-                            if (text.length > 100 && !text.includes('【问题分析任务】')) {
+                            if (text.length > 100 && !text.includes('【问题分析任务】') && !text.includes('原始问题列表')) {
                                 return text;
                             }
                         }
@@ -830,7 +831,7 @@ ${questionsText}
             const elements = document.querySelectorAll(sel);
             for (let i = elements.length - 1; i >= 0; i--) {
                 const text = (elements[i].textContent || '').trim();
-                if (text.length > 100 && !text.includes('【问题分析任务】')) {
+                if (text.length > 100 && !text.includes('【问题分析任务】') && !text.includes('原始问题列表')) {
                     return text;
                 }
             }
