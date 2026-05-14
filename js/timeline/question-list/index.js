@@ -223,7 +223,10 @@ class QuestionListPopup {
 
             text.addEventListener('mouseenter', () => {
                 if (text.scrollWidth > text.clientWidth) {
-                    const el = this._buildItemTooltipElement(marker);
+                    const dotEl = marker.dotElement;
+                    const el = dotEl && tm
+                        ? tm._buildNodeTooltipElement(dotEl, marker.summary || '')
+                        : this._buildItemTooltipElement(marker);
                     window.globalTooltipManager.show(
                         `ql-item-${i}`,
                         'node',

@@ -701,448 +701,46 @@ html[data-timeline-theme="dark"] .ait-compact-mode .ait-timeline-dot.active::aft
 }
 
 /* ============================================
-   悬浮问题圆点面板（Floating Dots Panel）
-   - 右侧中间位置独立悬浮方框
-   - 条件显示：hover 时完整显示，无 hover 时精简
-   - 最多 9 个可见，超出滚动
-   - 与 QuestionListPopup 像素级一致
+   悬浮问题方框面板（Floating QL Panel）
+   - 内容使用 QuestionListPopup 完全一致的 .ait-ql-* 结构
+   - .ait-ql-floating 仅提供浮动定位与动画
    ============================================ */
 
-.ait-floating-dots-panel {
+.ait-ql-floating {
     position: absolute;
     right: calc(100% + 8px);
     top: 50%;
     transform: translateY(-50%);
     width: 250px;
-    max-height: 320px;
-    background: #fff;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 10px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    max-height: 360px;
     z-index: 29;
     opacity: 0;
     transform: translateY(-50%) translateX(6px);
     pointer-events: none;
     transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1),
                 transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
 }
 
-.ait-floating-dots-panel.visible {
+.ait-ql-floating.visible {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
     pointer-events: auto;
 }
 
-/* Header — 与 ait-ql-header 像素级一致 */
-.ait-floating-dots-panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 8px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-    flex-shrink: 0;
-}
-
-.ait-fdp-header-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #1d1d1f;
-    letter-spacing: -0.01em;
-    flex-shrink: 0;
-    margin-left: 6px;
-}
-
-/* List — 与 ait-ql-list 像素级一致 */
-.ait-floating-dots-panel-list {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    padding: 4px 2px;
-    scroll-behavior: smooth;
-}
-
-.ait-floating-dots-panel-list::-webkit-scrollbar {
-    width: 8px;
-}
-
-.ait-floating-dots-panel-list::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 10px;
-}
-
-.ait-floating-dots-panel-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.35);
-}
-
-.ait-floating-dots-panel-list::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-/* ========== Item — 与 ait-ql-item 像素级一致 ========== */
-.ait-fdp-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 4px 6px 8px;
-    cursor: pointer;
-    transition: background 0.1s;
-    border-radius: 6px;
-    margin-bottom: 1px;
-}
-
-.ait-fdp-item:last-child {
-    margin-bottom: 0;
-}
-
-.ait-fdp-item:hover {
-    background: rgba(0, 0, 0, 0.04);
-}
-
-.ait-fdp-item.active {
-    background: rgba(0, 0, 0, 0.05);
-}
-
-/* Checkbox — 与 ait-ql-item-checkbox 像素级一致 */
-.ait-fdp-item-checkbox {
-    width: 15px;
-    height: 15px;
-    cursor: pointer;
-    accent-color: #3b82f6;
-    flex-shrink: 0;
-    margin: 0 2px;
-    opacity: 0;
-    transition: opacity 0.15s;
-}
-
-.ait-fdp-item:hover .ait-fdp-item-checkbox,
-.ait-fdp-item-checkbox:checked {
-    opacity: 1;
-}
-
-/* Index — 与 ait-ql-item-index 像素级一致 */
-.ait-fdp-item-index {
-    font-size: 12px;
-    font-weight: 600;
-    color: #86868b;
-    min-width: 24px;
-    text-align: right;
-    flex-shrink: 0;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-}
-
-.ait-fdp-item.active .ait-fdp-item-index {
-    color: #1d1d1f;
-    font-weight: 700;
-}
-
-/* Text — 与 ait-ql-item-text 像素级一致 */
-.ait-fdp-item-text {
-    flex: 1;
-    font-size: 12.5px;
-    color: #1d1d1f;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1.5;
-}
-
-.ait-fdp-item.active .ait-fdp-item-text {
-    color: #1d1d1f;
-    font-weight: 500;
-}
-
-/* Pin & Star — 与 ait-ql-item-pin/star 像素级一致 */
-.ait-fdp-item-pin,
-.ait-fdp-item-star {
-    flex-shrink: 0;
-    width: 17px;
-    height: 17px;
-    cursor: pointer;
-    border-radius: 4px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    transition: opacity 0.15s;
-}
-
-.ait-fdp-item-pin,
-.ait-fdp-item-star {
-    opacity: 0;
-}
-
-.ait-fdp-item:hover .ait-fdp-item-pin,
-.ait-fdp-item:hover .ait-fdp-item-star,
-.ait-fdp-item-pin:not(.not-pinned),
-.ait-fdp-item-star:not(.not-starred) {
-    opacity: 1;
-}
-
-/* Pin — 未标记 */
-.ait-fdp-item-pin.not-pinned {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1 1 1 0 0 1 1 1z"/></svg>');
-}
-
-.ait-fdp-item:hover .ait-fdp-item-pin.not-pinned {
-    opacity: 0.5;
-}
-
-.ait-fdp-item-pin.not-pinned:hover {
-    opacity: 0.8 !important;
-}
-
-/* Pin — 已标记 */
-.ait-fdp-item-pin:not(.not-pinned) {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgb(255, 125, 3)" stroke="rgb(255, 125, 3)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1 1 1 0 0 1 1 1z"/></svg>');
-}
-
-/* Star — 未收藏 */
-.ait-fdp-item-star.not-starred {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26"><path fill="none" stroke="%23999" stroke-width="1.5" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>');
-}
-
-.ait-fdp-item:hover .ait-fdp-item-star.not-starred {
-    opacity: 0.5;
-}
-
-.ait-fdp-item-star.not-starred:hover {
-    opacity: 0.8 !important;
-}
-
-/* Star — 已收藏 */
-.ait-fdp-item-star:not(.not-starred) {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26"><path fill="rgb(255, 125, 3)" stroke="rgb(255, 125, 3)" stroke-width="0.5" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>');
-}
-
-/* Empty */
-.ait-fdp-empty {
-    padding: 32px 16px;
-    text-align: center;
-    color: #86868b;
-    font-size: 12.5px;
-}
-
-/* ========== 精简模式（Mini Dots） ========== */
-.ait-floating-dots-panel.ait-fdp-minimal {
-    width: 36px;
-    max-height: none;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    border-radius: 6px;
-    padding: 4px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow: visible;
-    right: calc(100% + 4px);
-}
-
-.ait-floating-dots-panel.ait-fdp-minimal .ait-floating-dots-panel-header,
-.ait-floating-dots-panel.ait-fdp-minimal .ait-floating-dots-panel-list {
-    display: none;
-}
-
-.ait-fdp-mini-dots {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    max-height: 200px;
-    overflow: hidden;
-}
-
-.ait-fdp-mini-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: #D1D5DB;
-    flex-shrink: 0;
-    transition: background-color 0.15s ease, transform 0.15s ease;
-}
-
-.ait-fdp-mini-dot.starred {
-    background-color: #FF7D03;
-    clip-path: polygon(50% 8.33%, 62.875% 34.42%, 91.67% 38.63%, 70.83% 58.92%, 75.75% 87.58%, 50% 74.04%, 24.25% 87.58%, 29.17% 58.92%, 8.33% 38.63%, 37.125% 34.42%);
-    width: 10px;
-    height: 10px;
-}
-
-.ait-fdp-mini-dot.active {
-    background-color: #6128FF;
-    transform: scale(1.4);
-    box-shadow: 0 0 0 1px rgba(97, 40, 255, 0.3);
-}
-
-.ait-fdp-more-indicator {
-    font-size: 9px;
-    color: #86868b;
-    text-align: center;
-    line-height: 1;
-    letter-spacing: -0.5px;
-    margin-top: 4px;
-}
-
-/* ========== Dark mode ========== */
-html[data-timeline-theme="dark"] .ait-floating-dots-panel {
-    background: #2c2c2e;
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-html[data-timeline-theme="dark"] .ait-floating-dots-panel-header {
-    border-bottom-color: rgba(255, 255, 255, 0.06);
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-header-title {
-    color: #f5f5f7;
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item:hover {
-    background: rgba(255, 255, 255, 0.06);
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item.active {
-    background: rgba(255, 255, 255, 0.08);
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item-index {
-    color: #8e8e93;
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item.active .ait-fdp-item-index {
-    color: #f5f5f7;
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item-text {
-    color: #f5f5f7;
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item.active .ait-fdp-item-text {
-    color: #f5f5f7;
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item-pin.not-pinned {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1 1 1 0 0 1 1 1z"/></svg>');
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item-star.not-starred {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26"><path fill="none" stroke="%23888" stroke-width="1.5" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>');
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-empty {
-    color: #8e8e93;
-}
-
-html[data-timeline-theme="dark"] .ait-floating-dots-panel-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-html[data-timeline-theme="dark"] .ait-floating-dots-panel-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.35);
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-item-checkbox {
-    accent-color: #60a5fa;
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-mini-dot {
-    background-color: #A0A0A0;
-}
-
-html[data-timeline-theme="dark"] .ait-fdp-mini-dot.active {
-    background-color: #8B5CF6;
-    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4);
-}
-
-/* ========== 响应式设计 ========== */
+/* ========== 响应式：浮动面板定位微调 ========== */
 @media (max-width: 768px) {
-    .ait-floating-dots-panel {
-        width: 200px;
-        max-height: 260px;
+    .ait-ql-floating {
+        width: 220px;
+        max-height: 300px;
         right: calc(100% + 4px);
-    }
-
-    .ait-fdp-item {
-        padding: 4px 3px 4px 6px;
-        gap: 4px;
-    }
-
-    .ait-fdp-item-index {
-        font-size: 11px;
-        min-width: 20px;
-    }
-
-    .ait-fdp-item-text {
-        font-size: 11px;
-    }
-
-    .ait-fdp-item-pin,
-    .ait-fdp-item-star {
-        width: 15px;
-        height: 15px;
-    }
-
-    .ait-floating-dots-panel.ait-fdp-minimal {
-        width: 28px;
-        right: calc(100% + 2px);
-    }
-
-    .ait-fdp-mini-dots {
-        gap: 10px;
-    }
-
-    .ait-fdp-mini-dot {
-        width: 5px;
-        height: 5px;
-    }
-
-    .ait-fdp-mini-dot.starred {
-        width: 8px;
-        height: 8px;
     }
 }
 
 @media (max-width: 480px) {
-    .ait-floating-dots-panel {
-        width: 160px;
-        max-height: 220px;
+    .ait-ql-floating {
+        width: 190px;
+        max-height: 260px;
+        right: calc(100% + 2px);
     }
-
-    .ait-fdp-item {
-        padding: 3px 2px 3px 5px;
-        gap: 3px;
-    }
-
-    .ait-fdp-item-index {
-        font-size: 10px;
-        min-width: 18px;
-    }
-
-    .ait-fdp-item-text {
-        font-size: 10px;
-    }
-
-    .ait-floating-dots-panel.ait-fdp-minimal {
-        width: 24px;
-    }
-
-    .ait-fdp-mini-dots {
-        max-height: 150px;
-        gap: 9px;
-    }
-}
-
-/* ============================================
-   隐藏时间轴上的原始散点（消除重复显示）
-   ============================================ */
-.ait-timeline-dot {
-    display: none !important;
 }
 

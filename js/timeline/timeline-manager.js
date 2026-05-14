@@ -2280,6 +2280,7 @@ class TimelineManager {
      */
     showTooltipForDot(dot) {
         if (!dot) return;
+        if (window.questionDotsPanel && window.questionDotsPanel.visible) return;
         
         const id = 'node-' + (dot.dataset.targetTurnId || '');
         const messageText = (dot.getAttribute('aria-label') || '').trim();
@@ -3214,6 +3215,25 @@ class TimelineManager {
         }
     }
 
+    /**
+     * 对外派发收藏状态变化事件（用于方框与大圆点双向联动）
+     * @param {string} turnId - 收藏状态变化的节点 ID
+     * @param {boolean} starred - 是否已收藏
+     */
+    _emitStarChange(turnId, starred) {
+        try {
+            window.dispatchEvent(new CustomEvent('timeline:starChange', {
+                detail: {
+                    turnId,
+                    starred,
+                    timestamp: Date.now()
+                }
+            }));
+        } catch (e) {
+            // 静默处理事件派发失败
+        }
+    }
+
     waitForElement(selector) {
         return new Promise((resolve) => {
             const element = document.querySelector(selector);
@@ -3670,6 +3690,7 @@ class TimelineManager {
             }
             
             this.updateStarredBtnVisibility();
+            this._emitStarChange(id, false);
             return { success: true, action: 'unstar' };
         } else {
             // ✅ 添加收藏：直接保存到默认收藏夹（folderId: null），无需弹窗
@@ -3692,6 +3713,7 @@ class TimelineManager {
             }
             
             this.updateStarredBtnVisibility();
+            this._emitStarChange(id, true);
             return { success: true, action: 'star' };
         }
     }
