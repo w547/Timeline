@@ -55,17 +55,6 @@ class QuestionListPopup {
         const headerRight = document.createElement('div');
         headerRight.className = 'ait-ql-header-right';
 
-        // ✅ 合并输入按钮（放在最显眼位置，始终可见）
-        this._mergeBtn = document.createElement('button');
-        this._mergeBtn.className = 'ait-ql-merge-btn';
-        this._mergeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
-        this._mergeBtn.textContent = '合并输入';
-        this._mergeBtn.title = '勾选问题后，点击合并输入到AI提问框';
-        this._mergeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this._handleMergeInput();
-        });
-
         const settingsBtn = document.createElement('button');
         settingsBtn.className = 'ait-ql-settings';
         settingsBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -80,7 +69,6 @@ class QuestionListPopup {
         headerRight.appendChild(settingsBtn);
 
         header.appendChild(title);
-        header.appendChild(this._mergeBtn);
         header.appendChild(headerRight);
 
         // List
@@ -162,16 +150,6 @@ class QuestionListPopup {
             item.dataset.index = i;
             item.dataset.turnId = marker.id;
 
-            // ✅ 多选复选框
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'ait-ql-item-checkbox';
-            checkbox.dataset.turnId = marker.id;
-            checkbox.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this._updateMergeBtn();
-            });
-
             const idx = document.createElement('span');
             idx.className = 'ait-ql-item-index';
             idx.textContent = `Q${i + 1}`;
@@ -245,7 +223,6 @@ class QuestionListPopup {
                 this._updateActiveItem(marker.id);
             });
 
-            item.appendChild(checkbox);
             item.appendChild(idx);
             item.appendChild(text);
             item.appendChild(pin);
@@ -270,120 +247,6 @@ class QuestionListPopup {
             activeItem.scrollIntoView({ block: 'center', behavior: 'instant' });
         }
     }
-
-    // ✅ 更新合并输入按钮状态（始终可见）
-    _updateMergeBtn() {
-        if (!this._mergeBtn || !this._listEl) return;
-        const selectedCount = this._listEl.querySelectorAll('.ait-ql-item-checkbox:checked').length;
-        this._mergeBtn.disabled = selectedCount === 0;
-        this._mergeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>合并输入' + (selectedCount > 0 ? `(${selectedCount})` : '');
-    }
-
-    // ✅ 获取选中的markers
-    _getSelectedMarkers() {
-        if (!this._listEl) return [];
-        const tm = window.timelineManager;
-        if (!tm || !tm.markers) return [];
-        const checkedCheckboxes = this._listEl.querySelectorAll('.ait-ql-item-checkbox:checked');
-        const selectedIds = new Set(Array.from(checkedCheckboxes).map(cb => cb.dataset.turnId));
-        return tm.markers.filter(m => selectedIds.has(m.id));
-    }
-
-    // ✅ 处理合并输入
-    async _handleMergeInput() {
-        const selectedMarkers = this._getSelectedMarkers();
-        if (selectedMarkers.length === 0) {
-            if (window.globalToastManager) {
-                window.globalToastManager.show('warning', '请先勾选要合并的问题');
-            }
-            return;
-        }
-
-        // 生成合并输入序号
-        const seqNum = await this._getNextMergeSeq();
-        const folderName = `合并输入${seqNum}`;
-
-        // 将选中的问题保存到收藏夹
-        try {
-            await this._saveQuestionsToFolder(selectedMarkers, folderName);
-        } catch (e) {
-            console.error('[QuestionList] 保存问题到文件夹失败:', e);
-        }
-
-        // 显示成功提示
-        if (window.globalToastManager) {
-            window.globalToastManager.success(`已创建文件夹【${folderName}】，包含 ${selectedMarkers.length} 个问题`);
-        }
-
-        // 🔒 后续自动填充提问框、Enter、对AI提问等功能暂不实现
-        // 用户可通过输入框旁的【文件夹】按钮手动将文件夹问题发送给AI
-    }
-
-    // ✅ 获取下一个合并输入序号
-    async _getNextMergeSeq() {
-        try {
-            const result = await chrome.storage.local.get('_aitMergeInputSeq');
-            const currentSeq = result._aitMergeInputSeq || 0;
-            const nextSeq = currentSeq + 1;
-            await chrome.storage.local.set({ _aitMergeInputSeq: nextSeq });
-            return nextSeq;
-        } catch (e) {
-            return Date.now();
-        }
-    }
-
-    // ✅ 将选中问题保存到文件夹
-    async _saveQuestionsToFolder(markers, folderName) {
-        try {
-            // 创建或获取文件夹（格式与 FolderManager 一致）
-            const result = await chrome.storage.local.get('folders');
-            const folders = result.folders || [];
-            
-            let folder = folders.find(f => f.name === folderName);
-            const folderId = folder ? folder.id : `folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            
-            if (!folder) {
-                folder = {
-                    id: folderId,
-                    name: folderName,
-                    icon: '',
-                    parentId: null,
-                    createdAt: Date.now(),
-                    order: folders.length
-                };
-                folders.push(folder);
-                await chrome.storage.local.set({ folders });
-            }
-
-            // 保存每个问题到收藏夹
-            const tm = window.timelineManager;
-            const urlWithoutProtocol = location.href.replace(/^https?:\/\//, '');
-            
-            for (const marker of markers) {
-                const nodeId = tm.adapter?.extractIndexFromTurnId?.(marker.id);
-                const nodeKey = nodeId !== null && nodeId !== undefined ? nodeId : marker.id;
-                const key = `chatTimelineStar:${urlWithoutProtocol}:${nodeKey}`;
-                
-                const starItem = {
-                    key,
-                    url: location.href,
-                    urlWithoutProtocol,
-                    nodeId: nodeKey,
-                    question: marker.summary || '',
-                    timestamp: Date.now(),
-                    folderId: folderId
-                };
-                
-                // ✅ 注意：StarStorageManager 是全局 const，不在 window 上，直接引用
-                await StarStorageManager.add(starItem);
-            }
-
-            console.log(`[QuestionList] 已将 ${markers.length} 个问题保存到文件夹【${folderName}】(id: ${folderId})`);
-        } catch (e) {
-            console.error('[QuestionList] 保存问题到文件夹失败:', e);
-        }
-    }
-
     // ✅ 插入文本到AI输入框
     _insertToAIInput(text) {
         try {

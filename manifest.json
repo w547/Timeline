@@ -125,6 +125,7 @@
         "js/smartInputBox/adapters/notebooklm.js",
         "js/smartInputBox/adapters/registry.js",
         "js/smartInputBox/prompt-dropdown-ui.js",
+        "js/shared/extract-template-service.js",
         "js/smartInputBox/prompt-button-manager.js",
         "js/smartInputBox/folder-button-manager.js",
         "js/smartInputBox/save-answer-button-manager.js",

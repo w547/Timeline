@@ -330,13 +330,62 @@ class FolderButtonManager {
         // 显示动画
         requestAnimationFrame(() => {
             modal.classList.add('visible');
+            this._positionModal();
         });
+
+        // 窗口大小变化时重新定位
+        this._boundResize = () => this._positionModal();
+        window.addEventListener('resize', this._boundResize);
 
         // Esc 关闭
         this._boundKeyDown = (e) => {
             if (e.key === 'Escape') this._hideModal();
         };
         document.addEventListener('keydown', this._boundKeyDown);
+    }
+
+    /**
+     * 计算浮窗位置（参考提示词按钮的定位方式，浮窗近按钮）
+     */
+    _positionModal() {
+        if (!this._folderModal || !this.buttonElement) return;
+        const btnRect = this.buttonElement.getBoundingClientRect();
+        if (btnRect.width <= 0 || btnRect.height <= 0) return;
+
+        const modal = this._folderModal;
+        const modalWidth = 540;
+        const maxModalWidth = Math.min(modalWidth, window.innerWidth - 32);
+        const modalHeight = 560;
+        const maxModalHeight = Math.min(modalHeight, window.innerHeight - 60);
+        const gap = 8;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        modal.style.width = maxModalWidth + 'px';
+        modal.style.maxHeight = maxModalHeight + 'px';
+
+        // 水平：右边缘与按钮右边缘对齐，超出屏幕则贴近右边缘
+        let left = btnRect.right - modalWidth;
+        if (left < 8) left = 8;
+        if (left + modalWidth > vw - 8) left = vw - modalWidth - 8;
+
+        // 垂直：优先放在按钮下方，空间不足则放在上方
+        const spaceBelow = vh - btnRect.bottom - gap;
+        const spaceAbove = btnRect.top - gap;
+        let top;
+        if (spaceBelow >= maxModalHeight) {
+            top = btnRect.bottom + gap;
+        } else if (spaceAbove >= maxModalHeight) {
+            top = btnRect.top - gap - maxModalHeight;
+        } else {
+            // 都不够，居中
+            top = Math.max(8, (vh - maxModalHeight) / 2);
+        }
+        top = Math.max(8, Math.min(top, vh - maxModalHeight - 8));
+
+        modal.style.left = left + 'px';
+        modal.style.top = top + 'px';
+        modal.style.transform = 'none';
     }
 
     /**
@@ -496,6 +545,11 @@ class FolderButtonManager {
         if (this._boundKeyDown) {
             document.removeEventListener('keydown', this._boundKeyDown);
             this._boundKeyDown = null;
+        }
+
+        if (this._boundResize) {
+            window.removeEventListener('resize', this._boundResize);
+            this._boundResize = null;
         }
 
         if (this._folderModal) {

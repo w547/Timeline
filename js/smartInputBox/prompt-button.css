@@ -101,6 +101,1093 @@ body[class*="dark"] .smart-input-prompt-btn:hover {
     }
 }
 
+/* ==================== 浮窗遮罩层 ==================== */
+.prompt-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99990;
+    background: rgba(0, 0, 0, 0.5);
+    animation: prompt-fade-in 0.2s ease-out;
+}
+
+@keyframes prompt-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ==================== 浮窗主容器 ==================== */
+.prompt-modal {
+    position: fixed;
+    z-index: 99991;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    width: 540px;
+    max-width: calc(100vw - 32px);
+    height: 560px;
+    max-height: calc(100vh - 60px);
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 16px;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.18),
+        0 4px 16px rgba(0, 0, 0, 0.1),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.prompt-modal.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.prompt-modal[style*="transform: none"] {
+    transition: opacity 0.2s ease;
+}
+
+/* ==================== Header ==================== */
+.prompt-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+}
+
+.prompt-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.prompt-modal-header-icon {
+    width: 20px;
+    height: 20px;
+    color: #7c3aed;
+}
+
+.prompt-modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.prompt-modal-manage-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: #fff;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.prompt-modal-manage-btn:hover {
+    background: #f5f3ff;
+    border-color: rgba(124, 58, 237, 0.3);
+    color: #7c3aed;
+}
+
+/* ==================== Toolbar ==================== */
+.prompt-modal-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
+}
+
+.prompt-modal-search {
+    flex: 1;
+    min-width: 0;
+}
+
+.prompt-modal-search input {
+    width: 100%;
+    padding: 7px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2937;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.prompt-modal-search input::placeholder {
+    color: #9ca3af;
+}
+
+.prompt-modal-search input:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+/* ==================== Body ==================== */
+.prompt-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 4px;
+}
+
+.prompt-modal-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* ==================== 提示词列表项 ==================== */
+.prompt-modal-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    margin: 2px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.prompt-modal-item:hover {
+    background: rgba(124, 58, 237, 0.06);
+}
+
+.prompt-modal-item:active {
+    opacity: 0.8;
+}
+
+.prompt-modal-item-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.prompt-modal-pin-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+}
+
+.prompt-modal-item-content {
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.prompt-modal-search-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* ==================== 深色模式适配 ==================== */
+
+html[data-timeline-theme="dark"] .prompt-modal-overlay,
+html[class*="dark"] .prompt-modal-overlay,
+body.dark .prompt-modal-overlay,
+body[class*="dark"] .prompt-modal-overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+html[data-timeline-theme="dark"] .prompt-modal,
+html[class*="dark"] .prompt-modal,
+body.dark .prompt-modal,
+body[class*="dark"] .prompt-modal {
+    background: rgba(31, 41, 55, 0.98);
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 4px 16px rgba(0, 0, 0, 0.25),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-header,
+html[class*="dark"] .prompt-modal-header,
+body.dark .prompt-modal-header,
+body[class*="dark"] .prompt-modal-header {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-title,
+html[class*="dark"] .prompt-modal-title,
+body.dark .prompt-modal-title,
+body[class*="dark"] .prompt-modal-title {
+    color: #f1f5f9;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-header-icon,
+html[class*="dark"] .prompt-modal-header-icon,
+body.dark .prompt-modal-header-icon,
+body[class*="dark"] .prompt-modal-header-icon {
+    color: #a78bfa;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-manage-btn,
+html[class*="dark"] .prompt-modal-manage-btn,
+body.dark .prompt-modal-manage-btn,
+body[class*="dark"] .prompt-modal-manage-btn {
+    background: rgba(55, 65, 81, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-manage-btn:hover,
+html[class*="dark"] .prompt-modal-manage-btn:hover,
+body.dark .prompt-modal-manage-btn:hover,
+body[class*="dark"] .prompt-modal-manage-btn:hover {
+    background: rgba(124, 58, 237, 0.15);
+    border-color: rgba(167, 139, 250, 0.3);
+    color: #c4b5fd;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-toolbar,
+html[class*="dark"] .prompt-modal-toolbar,
+body.dark .prompt-modal-toolbar,
+body[class*="dark"] .prompt-modal-toolbar {
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-search input,
+html[class*="dark"] .prompt-modal-search input,
+body.dark .prompt-modal-search input,
+body[class*="dark"] .prompt-modal-search input {
+    background: rgba(55, 65, 81, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e5e7eb;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-search input::placeholder,
+html[class*="dark"] .prompt-modal-search input::placeholder,
+body.dark .prompt-modal-search input::placeholder,
+body[class*="dark"] .prompt-modal-search input::placeholder {
+    color: #6b7280;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-search input:focus,
+html[class*="dark"] .prompt-modal-search input:focus,
+body.dark .prompt-modal-search input:focus,
+body[class*="dark"] .prompt-modal-search input:focus {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-item:hover,
+html[class*="dark"] .prompt-modal-item:hover,
+body.dark .prompt-modal-item:hover,
+body[class*="dark"] .prompt-modal-item:hover {
+    background: rgba(167, 139, 250, 0.08);
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-item-name,
+html[class*="dark"] .prompt-modal-item-name,
+body.dark .prompt-modal-item-name,
+body[class*="dark"] .prompt-modal-item-name {
+    color: #f1f5f9;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-item-content,
+html[class*="dark"] .prompt-modal-item-content,
+body.dark .prompt-modal-item-content,
+body[class*="dark"] .prompt-modal-item-content {
+    color: #9ca3af;
+}
+
+/* ==================== 系统深色模式 ==================== */
+@media (prefers-color-scheme: dark) {
+    .prompt-modal-overlay {
+        background: rgba(0, 0, 0, 0.7);
+    }
+
+    .prompt-modal {
+        background: rgba(31, 41, 55, 0.98);
+        box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.4),
+            0 4px 16px rgba(0, 0, 0, 0.25),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    .prompt-modal-header {
+        border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .prompt-modal-title { color: #f1f5f9; }
+    .prompt-modal-header-icon { color: #a78bfa; }
+
+    .prompt-modal-manage-btn {
+        background: rgba(55, 65, 81, 0.6);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #9ca3af;
+    }
+    .prompt-modal-manage-btn:hover {
+        background: rgba(124, 58, 237, 0.15);
+        border-color: rgba(167, 139, 250, 0.3);
+        color: #c4b5fd;
+    }
+
+    .prompt-modal-toolbar {
+        border-bottom-color: rgba(255, 255, 255, 0.04);
+    }
+
+    .prompt-modal-search input {
+        background: rgba(55, 65, 81, 0.6);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #e5e7eb;
+    }
+    .prompt-modal-search input::placeholder { color: #6b7280; }
+    .prompt-modal-search input:focus {
+        border-color: #a78bfa;
+        box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+    }
+
+    .prompt-modal-item:hover {
+        background: rgba(167, 139, 250, 0.08);
+    }
+
+    .prompt-modal-item-name { color: #f1f5f9; }
+    .prompt-modal-item-content { color: #9ca3af; }
+}
+
+/* ==================== 分类标签栏 ==================== */
+.prompt-modal-category-bar {
+    display: flex;
+    gap: 0;
+    padding: 8px 20px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+}
+
+.prompt-modal-category-tab {
+    padding: 8px 18px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s ease;
+    margin-bottom: -1px;
+}
+
+.prompt-modal-category-tab:hover {
+    color: #374151;
+}
+
+.prompt-modal-category-tab.active {
+    color: #7c3aed;
+    border-bottom-color: #7c3aed;
+}
+
+/* ==================== 滚动区域 ==================== */
+.prompt-modal-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 12px;
+}
+
+/* ==================== 列表区域 ==================== */
+.prompt-modal-list-section {
+    padding: 0;
+}
+
+.prompt-modal-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 6px;
+}
+
+.prompt-modal-list-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.prompt-modal-list-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 添加按钮 */
+.prompt-modal-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: #000;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.prompt-modal-add-btn:hover {
+    background: #333;
+}
+
+.prompt-modal-add-btn:active {
+    transform: scale(0.98);
+}
+
+
+
+/* 列表容器 */
+.prompt-modal-list-container {
+    background: #f9fafb;
+    border-radius: 8px;
+    margin: 0 16px;
+    padding: 8px;
+}
+
+/* 空状态 */
+.prompt-modal-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    color: #9ca3af;
+}
+
+.prompt-modal-empty-state svg {
+    margin-bottom: 8px;
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+
+.prompt-modal-empty-state span {
+    font-size: 13px;
+}
+
+/* ==================== 提示词/模板列表项 ==================== */
+.pm-item {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.pm-item:last-child {
+    margin-bottom: 0;
+}
+
+.pm-item:hover {
+    border-color: #eef0f2;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.pm-item-content {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    padding: 10px 12px;
+}
+
+.pm-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+
+.pm-item-name {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+    flex: 1;
+    min-width: 0;
+}
+
+.pm-item-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pm-item-text {
+    display: flex;
+    align-items: flex-start;
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+/* 操作按钮 */
+.pm-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    flex-shrink: 0;
+}
+
+.pm-item:hover .pm-item-actions {
+    opacity: 1;
+}
+
+.pm-item-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pm-item-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.pm-delete-btn:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.pm-pin-btn.active {
+    color: #facc15;
+}
+
+.pm-pin-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-right: 4px;
+    color: #facc15;
+}
+
+.pm-platform-logo {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-right: 6px;
+    border-radius: 4px;
+    object-fit: contain;
+}
+
+.pm-item-meta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+/* ==================== 编辑/添加弹窗 ==================== */
+.pm-edit-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.pm-edit-overlay.visible {
+    opacity: 1;
+}
+
+.pm-edit-modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 630px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 60px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.15s ease;
+}
+
+.pm-edit-overlay.visible .pm-edit-modal {
+    transform: scale(1);
+}
+
+.pm-edit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.pm-edit-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #6b7280;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pm-edit-close:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #1f2937;
+}
+
+.pm-edit-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(85vh - 160px);
+}
+
+.pm-edit-field {
+    margin-bottom: 14px;
+}
+
+.pm-edit-field:last-child {
+    margin-bottom: 0;
+}
+
+.pm-edit-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.pm-required {
+    color: #ef4444;
+}
+
+.pm-edit-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1f2937;
+    outline: none;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.pm-edit-input:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.pm-edit-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1f2937;
+    outline: none;
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.5;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.pm-edit-textarea:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.pm-edit-counter {
+    text-align: right;
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 4px;
+}
+
+.pm-edit-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1f2937;
+    background: #fff;
+    outline: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+}
+
+.pm-edit-select:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.pm-edit-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.pm-edit-btn-cancel {
+    padding: 7px 16px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    background: #fff;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pm-edit-btn-cancel:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.pm-edit-btn-save {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #000;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pm-edit-btn-save:hover {
+    background: #333;
+}
+
+.pm-edit-btn-save:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* ==================== 深色模式适配（新增组件） ==================== */
+html[data-timeline-theme="dark"] .prompt-modal-category-bar,
+html[class*="dark"] .prompt-modal-category-bar,
+body.dark .prompt-modal-category-bar,
+body[class*="dark"] .prompt-modal-category-bar {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-category-tab,
+html[class*="dark"] .prompt-modal-category-tab,
+body.dark .prompt-modal-category-tab,
+body[class*="dark"] .prompt-modal-category-tab {
+    color: #9ca3af;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-category-tab:hover,
+html[class*="dark"] .prompt-modal-category-tab:hover,
+body.dark .prompt-modal-category-tab:hover,
+body[class*="dark"] .prompt-modal-category-tab:hover {
+    color: #e5e7eb;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-category-tab.active,
+html[class*="dark"] .prompt-modal-category-tab.active,
+body.dark .prompt-modal-category-tab.active,
+body[class*="dark"] .prompt-modal-category-tab.active {
+    color: #a78bfa;
+    border-bottom-color: #a78bfa;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-list-title,
+html[class*="dark"] .prompt-modal-list-title,
+body.dark .prompt-modal-list-title,
+body[class*="dark"] .prompt-modal-list-title {
+    color: #f1f5f9;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-list-container,
+html[class*="dark"] .prompt-modal-list-container,
+body.dark .prompt-modal-list-container,
+body[class*="dark"] .prompt-modal-list-container {
+    background: rgba(55, 65, 81, 0.4);
+}
+
+html[data-timeline-theme="dark"] .pm-item,
+html[class*="dark"] .pm-item,
+body.dark .pm-item,
+body[class*="dark"] .pm-item {
+    background: rgba(55, 65, 81, 0.6);
+}
+
+html[data-timeline-theme="dark"] .pm-item:hover,
+html[class*="dark"] .pm-item:hover,
+body.dark .pm-item:hover,
+body[class*="dark"] .pm-item:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-timeline-theme="dark"] .pm-item-name,
+html[class*="dark"] .pm-item-name,
+body.dark .pm-item-name,
+body[class*="dark"] .pm-item-name {
+    color: #f1f5f9;
+}
+
+html[data-timeline-theme="dark"] .pm-item-text,
+html[class*="dark"] .pm-item-text,
+body.dark .pm-item-text,
+body[class*="dark"] .pm-item-text {
+    color: #9ca3af;
+}
+
+html[data-timeline-theme="dark"] .pm-item-btn:hover,
+html[class*="dark"] .pm-item-btn:hover,
+body.dark .pm-item-btn:hover,
+body[class*="dark"] .pm-item-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e5e7eb;
+}
+
+html[data-timeline-theme="dark"] .pm-delete-btn:hover,
+html[class*="dark"] .pm-delete-btn:hover,
+body.dark .pm-delete-btn:hover,
+body[class*="dark"] .pm-delete-btn:hover {
+    background: rgba(220, 38, 38, 0.2);
+    color: #fca5a5;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-overlay,
+html[class*="dark"] .pm-edit-overlay,
+body.dark .pm-edit-overlay,
+body[class*="dark"] .pm-edit-overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+html[data-timeline-theme="dark"] .pm-edit-modal,
+html[class*="dark"] .pm-edit-modal,
+body.dark .pm-edit-modal,
+body[class*="dark"] .pm-edit-modal {
+    background: rgba(31, 41, 55, 0.98);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+html[data-timeline-theme="dark"] .pm-edit-header,
+html[class*="dark"] .pm-edit-header,
+body.dark .pm-edit-header,
+body[class*="dark"] .pm-edit-header {
+    color: #f1f5f9;
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-timeline-theme="dark"] .pm-edit-close,
+html[class*="dark"] .pm-edit-close,
+body.dark .pm-edit-close,
+body[class*="dark"] .pm-edit-close {
+    color: #9ca3af;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-close:hover,
+html[class*="dark"] .pm-edit-close:hover,
+body.dark .pm-edit-close:hover,
+body[class*="dark"] .pm-edit-close:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-field label,
+html[class*="dark"] .pm-edit-field label,
+body.dark .pm-edit-field label,
+body[class*="dark"] .pm-edit-field label {
+    color: #e5e7eb;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-input,
+html[class*="dark"] .pm-edit-input,
+body.dark .pm-edit-input,
+body[class*="dark"] .pm-edit-input,
+html[data-timeline-theme="dark"] .pm-edit-textarea,
+html[class*="dark"] .pm-edit-textarea,
+body.dark .pm-edit-textarea,
+body[class*="dark"] .pm-edit-textarea,
+html[data-timeline-theme="dark"] .pm-edit-select,
+html[class*="dark"] .pm-edit-select,
+body.dark .pm-edit-select,
+body[class*="dark"] .pm-edit-select {
+    background: rgba(55, 65, 81, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e5e7eb;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-input:focus,
+html[class*="dark"] .pm-edit-input:focus,
+body.dark .pm-edit-input:focus,
+body[class*="dark"] .pm-edit-input:focus,
+html[data-timeline-theme="dark"] .pm-edit-textarea:focus,
+html[class*="dark"] .pm-edit-textarea:focus,
+body.dark .pm-edit-textarea:focus,
+body[class*="dark"] .pm-edit-textarea:focus,
+html[data-timeline-theme="dark"] .pm-edit-select:focus,
+html[class*="dark"] .pm-edit-select:focus,
+body.dark .pm-edit-select:focus,
+body[class*="dark"] .pm-edit-select:focus {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+}
+
+html[data-timeline-theme="dark"] .pm-edit-footer,
+html[class*="dark"] .pm-edit-footer,
+body.dark .pm-edit-footer,
+body[class*="dark"] .pm-edit-footer {
+    border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-timeline-theme="dark"] .pm-edit-btn-cancel,
+html[class*="dark"] .pm-edit-btn-cancel,
+body.dark .pm-edit-btn-cancel,
+body[class*="dark"] .pm-edit-btn-cancel {
+    background: rgba(55, 65, 81, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-btn-cancel:hover,
+html[class*="dark"] .pm-edit-btn-cancel:hover,
+body.dark .pm-edit-btn-cancel:hover,
+body[class*="dark"] .pm-edit-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e5e7eb;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-add-btn,
+html[class*="dark"] .prompt-modal-add-btn,
+body.dark .prompt-modal-add-btn,
+body[class*="dark"] .prompt-modal-add-btn {
+    background: #e5e7eb;
+    color: #1f2937;
+}
+
+html[data-timeline-theme="dark"] .prompt-modal-add-btn:hover,
+html[class*="dark"] .prompt-modal-add-btn:hover,
+body.dark .prompt-modal-add-btn:hover,
+body[class*="dark"] .prompt-modal-add-btn:hover {
+    background: #f1f5f9;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-btn-save,
+html[class*="dark"] .pm-edit-btn-save,
+body.dark .pm-edit-btn-save,
+body[class*="dark"] .pm-edit-btn-save {
+    background: #e5e7eb;
+    color: #1f2937;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-btn-save:hover,
+html[class*="dark"] .pm-edit-btn-save:hover,
+body.dark .pm-edit-btn-save:hover,
+body[class*="dark"] .pm-edit-btn-save:hover {
+    background: #f1f5f9;
+}
+
+html[data-timeline-theme="dark"] .pm-edit-btn-save:disabled,
+html[class*="dark"] .pm-edit-btn-save:disabled,
+body.dark .pm-edit-btn-save:disabled,
+body[class*="dark"] .pm-edit-btn-save:disabled {
+    background: rgba(75, 85, 99, 0.6);
+    color: #6b7280;
+}
+
+/* ==================== 系统深色模式(新增组件) ==================== */
+@media (prefers-color-scheme: dark) {
+    .prompt-modal-category-bar { border-bottom-color: rgba(255, 255, 255, 0.06); }
+    .prompt-modal-category-tab { color: #9ca3af; }
+    .prompt-modal-category-tab:hover { color: #e5e7eb; }
+    .prompt-modal-category-tab.active { color: #a78bfa; border-bottom-color: #a78bfa; }
+    .prompt-modal-list-title { color: #f1f5f9; }
+
+    .prompt-modal-list-container { background: rgba(55, 65, 81, 0.4); }
+    .pm-item { background: rgba(55, 65, 81, 0.6); }
+    .pm-item:hover { border-color: rgba(255, 255, 255, 0.08); }
+    .pm-item-name { color: #f1f5f9; }
+    .pm-item-text { color: #9ca3af; }
+    .pm-item-btn:hover { background: rgba(255, 255, 255, 0.08); color: #e5e7eb; }
+    .pm-delete-btn:hover { background: rgba(220, 38, 38, 0.2); color: #fca5a5; }
+
+    .pm-edit-overlay { background: rgba(0, 0, 0, 0.7); }
+    .pm-edit-modal { background: rgba(31, 41, 55, 0.98); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); }
+    .pm-edit-header { color: #f1f5f9; border-bottom-color: rgba(255, 255, 255, 0.06); }
+    .pm-edit-close { color: #9ca3af; }
+    .pm-edit-close:hover { background: rgba(255, 255, 255, 0.08); color: #f1f5f9; }
+    .pm-edit-field label { color: #e5e7eb; }
+    .pm-edit-input, .pm-edit-textarea, .pm-edit-select {
+        background: rgba(55, 65, 81, 0.6);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #e5e7eb;
+    }
+    .pm-edit-input:focus, .pm-edit-textarea:focus, .pm-edit-select:focus {
+        border-color: #a78bfa;
+        box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+    }
+    .pm-edit-footer { border-top-color: rgba(255, 255, 255, 0.06); }
+    .pm-edit-btn-cancel { background: rgba(55, 65, 81, 0.6); border-color: rgba(255, 255, 255, 0.1); color: #9ca3af; }
+    .pm-edit-btn-cancel:hover { background: rgba(255, 255, 255, 0.08); color: #e5e7eb; }
+    .prompt-modal-add-btn { background: #e5e7eb; color: #1f2937; }
+    .prompt-modal-add-btn:hover { background: #f1f5f9; }
+    .pm-edit-btn-save { background: #e5e7eb; color: #1f2937; }
+    .pm-edit-btn-save:hover { background: #f1f5f9; }
+    .pm-edit-btn-save:disabled { background: rgba(75, 85, 99, 0.6); color: #6b7280; }
+}
+
 /* ==================== 动画效果 ==================== */
 
 /* 出现动画 */
@@ -117,4 +1204,33 @@ body[class*="dark"] .smart-input-prompt-btn:hover {
 
 .smart-input-prompt-btn[style*="display: flex"] {
     animation: prompt-btn-appear 0.15s ease-out;
+}
+
+/* ==================== 响应式：浮窗尺寸适配 ==================== */
+@media (max-width: 768px) {
+    .prompt-modal {
+        width: calc(100vw - 24px) !important;
+        max-width: 540px;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) scale(0.95) !important;
+    }
+    .prompt-modal.visible {
+        transform: translate(-50%, -50%) scale(1) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .prompt-modal {
+        width: calc(100vw - 16px) !important;
+        height: calc(100vh - 80px) !important;
+        max-height: calc(100vh - 80px) !important;
+        border-radius: 12px;
+    }
+    .prompt-modal-header {
+        padding: 12px 16px;
+    }
+    .prompt-modal-toolbar {
+        padding: 10px 16px;
+    }
 }

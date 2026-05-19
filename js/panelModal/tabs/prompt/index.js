@@ -127,6 +127,9 @@ class PromptTab extends BaseTab {
         // 绑定分类标签切换事件
         this.bindCategoryTabEvents();
 
+        // 监听外部炼化事件（解耦后的事件驱动）
+        this._listenExtractExecute();
+
         // 监听 storage 变化，自动刷新提示词列表（支持外部写入，如文件夹炼化）
         this.addStorageListener((changes) => {
             if (changes.prompts) {
@@ -346,181 +349,57 @@ class PromptTab extends BaseTab {
         const extractBtn = document.getElementById('prompt-extract-btn');
         if (extractBtn) {
             this.addEventListener(extractBtn, 'click', () => {
-                this.showExtractModal();
+                this._showExtractViaService();
             });
         }
     }
     
     /**
-     * 显示炼化弹窗
+     * 通过 ExtractTemplateService 显示炼化弹窗（解耦后的接口）
      */
     showExtractModal() {
-        const overlay = document.createElement('div');
-        overlay.className = 'prompt-extract-overlay';
-        
-        const modal = document.createElement('div');
-        modal.className = 'prompt-extract-modal';
-        
-        modal.innerHTML = `
-            <div class="prompt-extract-header">
-                <h3>${chrome.i18n.getMessage('promptExtractTitle') || '炼化提问模板'}</h3>
-                <button class="prompt-extract-close">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="prompt-extract-body">
-                <div class="prompt-extract-intro">
-                    <p>${chrome.i18n.getMessage('promptExtractIntro') || '从收藏文件夹中的问题提炼出结构化的提问模板，方便复用。'}</p>
-                </div>
-                <div class="prompt-extract-folder-section">
-                    <label>${chrome.i18n.getMessage('promptExtractFolderLabel') || '选择文件夹'}</label>
-                    <select id="extract-folder-select" class="prompt-extract-select">
-                        <option value="">${chrome.i18n.getMessage('promptExtractAllFolders') || '所有文件夹'}</option>
-                    </select>
-                </div>
-                <div class="prompt-extract-preview">
-                    <div class="prompt-extract-preview-title">${chrome.i18n.getMessage('promptExtractPreview') || '问题预览'}</div>
-                    <div class="prompt-extract-preview-list" id="extract-preview-list">
-                        <div class="prompt-extract-empty">${chrome.i18n.getMessage('promptExtractSelectFolder') || '请选择文件夹查看问题'}</div>
-                    </div>
-                    <div class="prompt-extract-count" id="extract-question-count"></div>
-                </div>
-            </div>
-            <div class="prompt-extract-footer">
-                <button class="prompt-extract-btn-cancel">${chrome.i18n.getMessage('pxvkmz')}</button>
-                <button class="prompt-extract-btn-extract" id="extract-start-btn" disabled>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                    </svg>
-                    ${chrome.i18n.getMessage('promptExtractStart') || '开始炼化'}
-                </button>
-            </div>
-        `;
-        
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-        
-        // 初始化文件夹选择器
-        this._initExtractModal(overlay, modal);
-        
-        // 显示动画
-        requestAnimationFrame(() => {
-            overlay.classList.add('visible');
+        this._showExtractViaService();
+    }
+
+    /**
+     * 调用共享服务显示炼化模板弹窗
+     */
+    _showExtractViaService() {
+        if (typeof ExtractTemplateService === 'undefined') {
+            console.error('[PromptTab] ExtractTemplateService 未加载');
+            return;
+        }
+
+        ExtractTemplateService.show({
+            title: chrome.i18n.getMessage('promptExtractTitle') || '炼化提问模板',
+            description: chrome.i18n.getMessage('promptExtractIntro') || '从收藏文件夹中的问题提炼出结构化的提问模板，方便复用。',
+            onExecute: async ({ questions, folderId }) => {
+                await this._refineWithAI(questions, folderId);
+            }
         });
     }
-    
+
     /**
-     * 初始化炼化弹窗
+     * 监听 extract-template:execute 事件（供外部触发的炼化流程）
      */
-    async _initExtractModal(overlay, modal) {
-        const folderSelect = modal.querySelector('#extract-folder-select');
-        const previewList = modal.querySelector('#extract-preview-list');
-        const questionCount = modal.querySelector('#extract-question-count');
-        const startBtn = modal.querySelector('#extract-start-btn');
-        const closeBtn = modal.querySelector('.prompt-extract-close');
-        const cancelBtn = modal.querySelector('.prompt-extract-btn-cancel');
-        
-        // 加载文件夹列表
-        const folders = await this._getFolders();
-        folders.forEach(folder => {
-            const option = document.createElement('option');
-            option.value = folder.id;
-            option.textContent = `${folder.icon || '📁'} ${folder.name}`;
-            folderSelect.appendChild(option);
-        });
-        
-        // 加载所有收藏问题用于预览
-        const extractor = window.promptTemplateExtractor;
-        let allQuestions = await extractor.getStarredContents();
-        
-        // 更新预览
-        const updatePreview = async () => {
-            const folderId = folderSelect.value || null;
-            const questions = folderId 
-                ? await extractor.getStarredContents(folderId)
-                : allQuestions;
-            
-            if (questions.length === 0) {
-                previewList.innerHTML = `<div class="prompt-extract-empty">${chrome.i18n.getMessage('promptExtractNoQuestions') || '该文件夹没有收藏的问题'}</div>`;
-                questionCount.textContent = '';
-                startBtn.disabled = true;
-            } else {
-                previewList.innerHTML = questions.slice(0, 10).map((q, idx) => `
-                    <div class="prompt-extract-preview-item">
-                        <span class="prompt-extract-preview-index">Q${idx + 1}</span>
-                        <span class="prompt-extract-preview-text">${this._escapeHtml(this._truncate(q.content, 80))}</span>
-                    </div>
-                `).join('') + (questions.length > 10 ? `<div class="prompt-extract-more">... ${chrome.i18n.getMessage('promptExtractMore', [questions.length - 10]) || `还有 ${questions.length - 10} 个问题`}</div>` : '');
-                questionCount.textContent = chrome.i18n.getMessage('promptExtractTotal', [questions.length]) || `共 ${questions.length} 个问题`;
-                startBtn.disabled = false;
+    _listenExtractExecute() {
+        this._extractExecuteHandler = async (e) => {
+            const { questions, folderId } = e.detail || {};
+            if (questions && questions.length > 0) {
+                await this._refineWithAI(questions, folderId);
             }
         };
-        
-        // 文件夹选择变化时更新预览
-        folderSelect.addEventListener('change', updatePreview);
-        
-        // 初始化预览
-        await updatePreview();
-        
-        // 开始炼化
-        startBtn.addEventListener('click', async () => {
-            const folderId = folderSelect.value || null;
-            const questions = folderId 
-                ? await extractor.getStarredContents(folderId)
-                : await extractor.getStarredContents();
-            
-            if (questions.length === 0) {
-                if (window.globalToastManager) {
-                    window.globalToastManager.show('error', chrome.i18n.getMessage('promptExtractNoQuestions') || '没有可用的问题');
-                }
-                return;
-            }
-            
-            // 显示加载状态
-            startBtn.disabled = true;
-            startBtn.innerHTML = `<svg class="spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/>
-            </svg> ${chrome.i18n.getMessage('promptExtractProcessing') || '炼化中...'}`;
-            
-            // 关闭选择弹窗
-            this._closeExtractModal(overlay);
-            
-            try {
-                // ✅ 新流程：创建新AI对话 + 自动发送 + 保存AI回复
-                await this._refineWithAI(questions, folderId);
-            } catch (e) {
-                console.error('[PromptTab] Extract failed:', e);
-                if (window.globalToastManager) {
-                    window.globalToastManager.show('error', chrome.i18n.getMessage('promptExtractFailed') || '炼化失败');
-                }
-            }
-            
-            startBtn.disabled = false;
-            startBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-            </svg> ${chrome.i18n.getMessage('promptExtractStart') || '开始炼化'}`;
-        });
-        
-        // 关闭弹窗
-        const closeModal = () => this._closeExtractModal(overlay);
-        closeBtn.addEventListener('click', closeModal);
-        cancelBtn.addEventListener('click', closeModal);
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeModal();
-        });
+        document.addEventListener(ExtractTemplateService.EVENTS.EXECUTE, this._extractExecuteHandler);
     }
-    
+
     /**
-     * 关闭炼化弹窗
+     * 移除事件监听
      */
-    _closeExtractModal(overlay) {
-        overlay.classList.remove('visible');
-        setTimeout(() => {
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-        }, 200);
+    _unlistenExtractExecute() {
+        if (this._extractExecuteHandler) {
+            document.removeEventListener(ExtractTemplateService.EVENTS.EXECUTE, this._extractExecuteHandler);
+            this._extractExecuteHandler = null;
+        }
     }
 
     /**
@@ -1025,19 +904,6 @@ ${questionsText}
     }
     
     /**
-     * 获取文件夹列表
-     */
-    async _getFolders() {
-        try {
-            const result = await chrome.storage.local.get('folders');
-            return result.folders || [];
-        } catch (e) {
-            console.error('[PromptTab] Failed to get folders:', e);
-            return [];
-        }
-    }
-    
-    /**
      * 加载提示词列表
      */
     async loadPrompts() {
@@ -1368,7 +1234,7 @@ ${questionsText}
                     <label>${chrome.i18n.getMessage('promptContent')}<span class="required-mark">*</span></label>
                     <textarea class="prompt-modal-textarea" id="prompt-content-input"
                         placeholder="${chrome.i18n.getMessage('uwkjwjw')}"
-                        rows="4" maxlength="10000">${this._escapeHtml(prompt?.content || '')}</textarea>
+                        rows="8" maxlength="10000">${this._escapeHtml(prompt?.content || '')}</textarea>
                     <div class="prompt-char-counter">
                         <div class="prompt-platform-select" id="prompt-platform-select">
                             <span class="prompt-platform-label">${chrome.i18n.getMessage('ptfmsl')}：</span>
@@ -1637,14 +1503,6 @@ ${questionsText}
     }
     
     /**
-     * 截断文本
-     */
-    _truncate(text, maxLength) {
-        if (!text) return '';
-        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-    }
-    
-    /**
      * HTML 转义
      */
     _escapeHtml(text) {
@@ -1659,5 +1517,16 @@ ${questionsText}
      */
     unmounted() {
         super.unmounted();
+        this._unlistenExtractExecute();
+    }
+
+    /**
+     * 关闭炼化结果弹窗（由 _showExtractResultModal 使用）
+     */
+    _closeExtractModal(overlay) {
+        overlay.classList.remove('visible');
+        setTimeout(() => {
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }, 200);
     }
 }
